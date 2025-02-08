@@ -1,5 +1,7 @@
 #pragma once
 
+#include "keywords.h"
+
 #define PRINT_BUFFER_SIZE 1024
 char *print_buffer =
     NULL; // calloc(PRINT_BUFFER_SIZE, sizeof(char)); // TODO: leaks currently
@@ -8,11 +10,12 @@ enum TOKEN_TYPE {
   TOKEN_WORD = 0,
   TOKEN_STRING,
   TOKEN_NUMBER,
+  TOKEN_KEYWORD,
   TOKEN_TOKEN_COUNT
 };
 
 static const char *TOKEN_NAMES[] = {"TOKEN_WORD", "TOKEN_STRING",
-                                    "TOKEN_NUMBER"};
+                                    "TOKEN_NUMBER", "TOKEN_KEYWORD"};
 
 typedef struct {
   enum TOKEN_TYPE t;
@@ -73,6 +76,17 @@ Token **tokenize(char *contents, int contents_length, int *tokens_count) {
       // TODO: handle zero as string properly
       if (strtof(token->v, NULL) != 0) {
         token->t = TOKEN_NUMBER;
+      }
+    }
+
+    {
+      if (token->t == TOKEN_WORD) {
+        for (int i = 0; i < C_KEYWORD_COUNT; i += 1) {
+          if (strcmp(token->v, c_keywords[i]) == 0) {
+            token->t = TOKEN_KEYWORD;
+            break;
+          }
+        }
       }
     }
 
