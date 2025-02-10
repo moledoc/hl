@@ -27,6 +27,14 @@ char *read_contents(char *filename) {
   return contents;
 }
 
+// frees memory
+
+void free_contents(char *contents) {
+  if (contents != NULL) {
+    free(contents);
+  }
+}
+
 time_t get_last_modified(char *filename) {
   struct stat status;
   stat(filename, &status);
@@ -40,9 +48,7 @@ bool is_updated(char *filename, time_t *last_modified) {
 // frees memory of contents
 // allocs new memory for contents
 char *update_contents(char *filename, char *contents) {
-  if (contents != NULL) {
-    free(contents);
-  }
+  free_contents(contents);
   return read_contents(filename);
 }
 
