@@ -80,6 +80,11 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  if (access(filename, F_OK) != 0) {
+    fprintf(stderr, "specified file '%s' doesn't exist\n", filename);
+    return 1;
+  }
+
   if (*ext == 0) {
     char *filename_dup = strdup(filename); // allocs memory
     const char *dot = strrchr(filename_dup, '.');
