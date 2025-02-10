@@ -73,8 +73,9 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
     memcpy(token->v, contents + prev_offset, vlen);
 
     {
-      // TODO: handle zero as string properly
-      if (strtof(token->v, NULL) != 0) {
+      // TODO: handle zero as string more generally
+      if (strtof(token->v, NULL) != 0 ||
+          (token->vlen == 1 && *(token->v) == '0')) {
         token->t = TOKEN_NUMBER;
       }
     }

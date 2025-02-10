@@ -28,7 +28,6 @@ char *read_contents(char *filename) {
 }
 
 // frees memory
-
 void free_contents(char *contents) {
   if (contents != NULL) {
     free(contents);
@@ -39,7 +38,8 @@ time_t get_last_modified(char *filename) {
   struct stat status;
   stat(filename, &status);
 #ifdef OSX
-  return status.st_mtimespec.tv_sec; // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/stat.2.html
+  return status.st_mtimespec
+      .tv_sec; // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/stat.2.html
 #else
   return status.st_mtim.tv_sec;
 #endif
