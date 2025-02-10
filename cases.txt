@@ -1,13 +1,23 @@
-5
-5.2
-0
-0.0
-0.0000000
-0.00000001
-'lala'
-"lala"
-"\'lala'"
-"\"lala"
-'\'lala'
-'\"lala"'
-test.test.test
+test  <no color>
+5  <no color>
+5.2  <no color>
+0  <no color>
+0.0  <no color>
+0.0000000  <no color>
+0.00000001  <no color>
+'lala'  <no color>
+"lala"  <no color>
+"\'lala'"  <no color>
+"\"lala"  <no color>
+'\'lala'  <no color>
+'\"lala"'  <no color>
+"\\"  <no color>
+'\\'  <no color>
+"\\lala"  <no color>
+"lala\\"  <no color>
+"\\lala\\"  <no color>
+'\\lala'  <no color>
+'lala\\'  <no color>
+'\\lala\\'  <no color>
+test.test.test  <no color>
+this line shouldnt end with newline <no color>
