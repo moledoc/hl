@@ -33,4 +33,10 @@ test  <no color>
 'lala\\'  <no color>
 '\\lala\\'  <no color>
 test.test.test  <no color>
+TODO <no color>
+NOTE <no color>
+FIXME <no color>
+REVIEWME <no color>
+HACK <no color>
+REMOVEME <no color>
 this line shouldnt end with newline <no color>

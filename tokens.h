@@ -4,18 +4,20 @@
 
 #define PRINT_BUFFER_SIZE 1024
 char *print_buffer =
-    NULL; // calloc(PRINT_BUFFER_SIZE, sizeof(char)); // TODO: leaks currently
+    NULL; // NOTE: how to set: calloc(PRINT_BUFFER_SIZE, sizeof(char));
 
 enum TOKEN_TYPE {
   TOKEN_WORD = 0,
   TOKEN_STRING,
   TOKEN_NUMBER,
   TOKEN_KEYWORD,
+  TOKEN_COMMENT_KEYWORD,
   TOKEN_TOKEN_COUNT
 };
 
 static const char *TOKEN_NAMES[] = {"TOKEN_WORD", "TOKEN_STRING",
-                                    "TOKEN_NUMBER", "TOKEN_KEYWORD"};
+                                    "TOKEN_NUMBER", "TOKEN_KEYWORD",
+                                    "TOKEN_COMMENT_KEYWORD"};
 
 typedef struct {
   enum TOKEN_TYPE t;
@@ -24,7 +26,7 @@ typedef struct {
 } Token;
 
 Token **tokenize(char *contents, int contents_length, const char **keywords,
-                 const int keyword_count, int *tokens_count) {
+                 const int keyword_count, bool comment_kw, int *tokens_count) {
   Token **tokens = calloc(contents_length + 1, sizeof(Token *));
 
   int prev_offset = 0;
@@ -85,6 +87,17 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
         for (int i = 0; i < keyword_count; i += 1) {
           if (strcmp(token->v, keywords[i]) == 0) {
             token->t = TOKEN_KEYWORD;
+            break;
+          }
+        }
+      }
+    }
+
+    {
+      if (comment_kw && token->t == TOKEN_WORD) {
+        for (int i = 0; i < COMMENT_KEYWORD_COUNT; i += 1) {
+          if (strcmp(token->v, comment_keywords[i]) == 0) {
+            token->t = TOKEN_COMMENT_KEYWORD;
             break;
           }
         }

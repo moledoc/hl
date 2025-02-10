@@ -22,11 +22,15 @@ void tui_print(Token **tokens, int tokens_count) {
       printf("%s", tokens[i]->v);
       printf("\033[30m"); // BLACK FOREGROUND
     } else if (tokens[i]->t == TOKEN_NUMBER) {
-      printf("\033[35m"); // BLUE FOREGROUND
+      printf("\033[35m"); // MAGENTA FOREGROUND
       printf("%s", tokens[i]->v);
       printf("\033[30m"); // BLACK FOREGROUND
     } else if (tokens[i]->t == TOKEN_KEYWORD) {
-      printf("\033[34m"); // <TODO> FOREGROUND
+      printf("\033[34m"); // BLUE FOREGROUND
+      printf("%s", tokens[i]->v);
+      printf("\033[30m"); // BLACK FOREGROUND
+    } else if (tokens[i]->t == TOKEN_COMMENT_KEYWORD) {
+      printf("\033[33m"); // YELLOW FOREGROUND
       printf("%s", tokens[i]->v);
       printf("\033[30m"); // BLACK FOREGROUND
     } else {
@@ -35,7 +39,8 @@ void tui_print(Token **tokens, int tokens_count) {
   }
 }
 
-void tui_loop(char *filename, const char **keywords, const int keyword_count) {
+void tui_loop(char *filename, const char **keywords, const int keyword_count,
+              bool comment_kw) {
   struct sigaction act;
   act.sa_handler = graceful_shutdown;
   sigaction(SIGINT, &act, NULL);
@@ -45,11 +50,11 @@ void tui_loop(char *filename, const char **keywords, const int keyword_count) {
   time_t last_modified = get_last_modified(filename);
   int tokens_count = 0;
   Token **tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
-                            &tokens_count);
+                            comment_kw, &tokens_count);
 
   tui_print(tokens, tokens_count);
-  // print_buffer = calloc(tokens_count, sizeof(char *));
-  // print_tokens(tokens, tokens_count);
+  // print_buffer = calloc(tokens_count, sizeof(char *)); // REMOVEME:
+  // print_tokens(tokens, tokens_count); // REMOVEME:
 
   while (TUI_KEEP_RUNNING) {
     usleep(TUI_REFRESH_RATE);
@@ -59,7 +64,7 @@ void tui_loop(char *filename, const char **keywords, const int keyword_count) {
     if (was_refreshed) {
       tokens_count = 0;
       tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
-                        &tokens_count);
+                        comment_kw, &tokens_count);
       tui_print(tokens, tokens_count);
     }
   }

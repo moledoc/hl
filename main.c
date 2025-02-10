@@ -1,3 +1,8 @@
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "file_contents.h"
 #include "tokens.h"
 #include "tui.h"
@@ -9,7 +14,8 @@ const char *prog_name = "syhl"; // NOTE: subject to change
 // TODO: revise flag names, current ones are probably only placeholders
 void help() {
   printf("NAME\n\t%s - code highlighter\n", prog_name);
-  printf("\nSYNOPSIS\n\t%s [-h] [-v] [-e EXT] [-m MODE] FILE\n", prog_name);
+  printf("\nSYNOPSIS\n\t%s [-h] [-v] [-e EXT] [-m MODE] [-kw] FILE\n",
+         prog_name);
   printf("\nOPTIONS\n");
   printf("\t%s\n\t\tprint help\n", "-h, -help, --help, help");
   printf("\t%s\n\t\tprint version\n", "-v, -version, --version, version");
@@ -20,6 +26,9 @@ void help() {
   printf("\t%s\n\t\tfile to be highlighted (required)\n", "FILE");
   printf("\t\tNOTE: keyword highlighting is based on file extension, can be "
          "overruled by --ext flag\n");
+  printf("\t%s\n\t\thighlight more common keywords found in comments\n", "-kw");
+  printf("\t\tNOTE: supported common keywords: `TODO`, `NOTE`, `FIXME`, "
+         "`REVIEWME`, `HACK`\n");
   printf("\nEXAMPLES\n");
   printf("\t* TODO:\n");
   printf("\nAUTHOR\n");
@@ -33,6 +42,7 @@ int main(int argc, char **argv) {
   char *filename = NULL;
   char ext[16] = {0};
   char *mode = "gui";
+  bool comment_kw = false;
   const char **keywords = NULL;
   int keyword_count = 0;
 
@@ -55,6 +65,8 @@ int main(int argc, char **argv) {
                i + 1 < argc) {
       mode = argv[i + 1];
       i += 1;
+    } else if (strcmp("-kw", flag) == 0) {
+      comment_kw = true;
     } else if (i == argc - 1) {
       filename = flag;
     } else {
@@ -90,7 +102,7 @@ int main(int argc, char **argv) {
     printf("unimplemented");
     return 0;
   } else if (strcmp(mode, "tui") == 0) {
-    tui_loop(filename, keywords, keyword_count);
+    tui_loop(filename, keywords, keyword_count, comment_kw);
   } else {
     fprintf(stderr, "unsupported mode '%s'\n", mode);
     return 1;
