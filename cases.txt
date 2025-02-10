@@ -5,9 +5,21 @@ test  <no color>
 0.0  <no color>
 0.0000000  <no color>
 0.00000001  <no color>
+''  <no color>
+""  <no color>
+' '  <no color>
+" "  <no color>
+'\n'  <no color>
+"\n"  <no color>
 'lala'  <no color>
 "lala"  <no color>
+'"lala'  <no color>
+'"lala"'  <no color>
+"'lala"  <no color>
+"'lala'"  <no color>
 "\'lala'"  <no color>
+"\'lala"  <no color>
+"\"lala\""  <no color>
 "\"lala"  <no color>
 '\'lala'  <no color>
 '\"lala"'  <no color>

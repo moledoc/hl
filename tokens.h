@@ -41,11 +41,11 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
       if (offset >= contents_length) {
         offset = contents_length;
       }
-      char prev_c = contents[offset];
+      bool escaped = false;
       char c;
       while (offset < contents_length && (c = contents[offset]) &&
-             (c == closing_quote && prev_c == '\\' || c != closing_quote)) {
-        prev_c = c;
+             (c == closing_quote && escaped || c != closing_quote)) {
+        escaped = contents[offset - 1] != '\\' && c == '\\';
         offset += 1;
       }
       offset += 1; // account for closing quote
