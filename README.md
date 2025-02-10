@@ -1,7 +1,19 @@
-# syhl
+# hl
 
-`syhl` will be a code preview tool that has **sy**ntax **h**igh**l**ighting based on language.
-The main purpose for this is to display code from other or do visual parsing when working from `acme`.
+*NOTE: name is not yet final.*
+
+`hl` will be a code highlighting tool that highlights:
+
+* strings/chars
+* numbers
+* language specific keywords
+* keywords such as `TODO:`, `NOTE:`, `FIXME:` etc
+
+The main purpose for this is add some capability to highlight code in `acme` workflow.
+
+## TODOs
+
+* This readme
 
 ## Author
 
