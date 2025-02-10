@@ -35,7 +35,7 @@ void tui_print(Token **tokens, int tokens_count) {
   }
 }
 
-void tui_loop(char *filename) {
+void tui_loop(char *filename, const char **keywords, const int keyword_count) {
   struct sigaction act;
   act.sa_handler = graceful_shutdown;
   sigaction(SIGINT, &act, NULL);
@@ -44,7 +44,8 @@ void tui_loop(char *filename) {
   char *contents = read_contents(filename);
   time_t last_modified = get_last_modified(filename);
   int tokens_count = 0;
-  Token **tokens = tokenize(contents, strlen(contents), &tokens_count);
+  Token **tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
+                            &tokens_count);
 
   tui_print(tokens, tokens_count);
 
@@ -55,7 +56,8 @@ void tui_loop(char *filename) {
         check_contents(filename, contents, &last_modified, &was_refreshed);
     if (was_refreshed) {
       tokens_count = 0;
-      tokens = tokenize(contents, strlen(contents), &tokens_count);
+      tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
+                        &tokens_count);
       tui_print(tokens, tokens_count);
     }
   }

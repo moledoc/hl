@@ -4,5 +4,5 @@
 
 int main(int argc, char **argv) {
   char *filename = argv[1];
-  tui_loop(filename);
+  tui_loop(filename, (const char **)c_keywords, C_KEYWORD_COUNT);
 }

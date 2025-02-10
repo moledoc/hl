@@ -21,10 +21,10 @@ typedef struct {
   enum TOKEN_TYPE t;
   char *v;
   int vlen;
-  int color; // 0xRRGGBB
 } Token;
 
-Token **tokenize(char *contents, int contents_length, int *tokens_count) {
+Token **tokenize(char *contents, int contents_length, const char **keywords,
+                 const int keyword_count, int *tokens_count) {
   Token **tokens = calloc(contents_length, sizeof(Token *));
 
   int prev_offset = 0;
@@ -81,8 +81,8 @@ Token **tokenize(char *contents, int contents_length, int *tokens_count) {
 
     {
       if (token->t == TOKEN_WORD) {
-        for (int i = 0; i < C_KEYWORD_COUNT; i += 1) {
-          if (strcmp(token->v, c_keywords[i]) == 0) {
+        for (int i = 0; i < keyword_count; i += 1) {
+          if (strcmp(token->v, keywords[i]) == 0) {
             token->t = TOKEN_KEYWORD;
             break;
           }
