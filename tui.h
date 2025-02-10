@@ -11,10 +11,10 @@
 
 static volatile bool TUI_KEEP_RUNNING = true;
 
-void graceful_shutdown(int) { TUI_KEEP_RUNNING = false; }
+void graceful_shutdown(int _) { TUI_KEEP_RUNNING = false; }
 
 void tui_print(Token **tokens, int tokens_count) {
-  system("clear"); // NOTE: linux specific atm
+  system("clear"); // NOTE: linux specific atm // TODO: support other os
 
   for (int i = 0; i < tokens_count; i += 1) {
     if (tokens[i]->t == TOKEN_STRING) {
@@ -48,6 +48,8 @@ void tui_loop(char *filename, const char **keywords, const int keyword_count) {
                             &tokens_count);
 
   tui_print(tokens, tokens_count);
+  // print_buffer = calloc(tokens_count, sizeof(char *));
+  // print_tokens(tokens, tokens_count);
 
   while (TUI_KEEP_RUNNING) {
     usleep(TUI_REFRESH_RATE);

@@ -25,7 +25,7 @@ typedef struct {
 
 Token **tokenize(char *contents, int contents_length, const char **keywords,
                  const int keyword_count, int *tokens_count) {
-  Token **tokens = calloc(contents_length, sizeof(Token *));
+  Token **tokens = calloc(contents_length + 1, sizeof(Token *));
 
   int prev_offset = 0;
   int offset = 0;
@@ -94,6 +94,20 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
     *tokens_count += 1;
 
     prev_offset = offset;
+  }
+
+  // NOTE: if we don't end with newline token,
+  // then the last line is not printed in tui.
+  // To get around it, we add the token, if needed.
+  if (*tokens_count > 1 && strcmp(tokens[*tokens_count - 1]->v, "\n") != 0) {
+    Token *eof_token = calloc(1, sizeof(Token));
+    char *v = calloc(1, sizeof(char));
+    memcpy(v, "\n", 1);
+    eof_token->v = v;
+    eof_token->vlen = 1;
+    eof_token->t = TOKEN_WORD;
+    tokens[*tokens_count] = eof_token;
+    *tokens_count += 1;
   }
 
   return tokens;
