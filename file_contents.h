@@ -38,7 +38,11 @@ void free_contents(char *contents) {
 time_t get_last_modified(char *filename) {
   struct stat status;
   stat(filename, &status);
+#ifdef OSX
+  return status.st_mtimespec.tv_sec; // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/stat.2.html
+#else
   return status.st_mtim.tv_sec;
+#endif
 }
 
 bool is_updated(char *filename, time_t *last_modified) {
