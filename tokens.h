@@ -97,7 +97,7 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
     prev_offset = offset;
   }
 
-  // NOTE: if we don't end with newline token,
+  // NOTE: if we dont end with newline token,
   // then the last line is not printed in tui.
   // To get around it, we add the token, if needed.
   if (*tokens_count > 1 && strcmp(tokens[*tokens_count - 1]->v, "\n") != 0) {

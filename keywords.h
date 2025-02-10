@@ -1,5 +1,9 @@
 #pragma once
 
+enum DEFAULT_KEYWORD { DEFAULT_KEYWORD_COUNT = 0 };
+
+const char *default_keywords[DEFAULT_KEYWORD_COUNT] = {};
+
 enum C_KEYWORD {
   ALIGNAS = 0,
   ALIGNOF,
@@ -13,6 +17,7 @@ enum C_KEYWORD {
   CONSTEXPR,
   CONTINUE,
   DEFAULT,
+  DEFINE,
   DO,
   DOUBLE,
   ELSE,
@@ -53,15 +58,16 @@ enum C_KEYWORD {
 };
 
 const char *c_keywords[C_KEYWORD_COUNT] = {
-    "alignas",  "alignof",   "assert",        "auto",
-    "bool",     "break",     "case",          "char",
-    "const",    "constexpr", "continue",      "default",
-    "do",       "double",    "else",          "enum",
-    "extern",   "false",     "float",         "for",
-    "goto",     "if",        "include",       "inline",
-    "int",      "long",      "nullptr",       "pragma",
-    "register", "restrict",  "return",        "short",
-    "signed",   "sizeof",    "static",        "static_assert",
-    "struct",   "switch",    "thread_local",  "true",
-    "typedef",  "typeof",    "typeof_unqual", "union",
-    "unsigned", "void",      "volatile",      "while"};
+    "alignas",       "alignof",   "assert",   "auto",
+    "bool",          "break",     "case",     "char",
+    "const",         "constexpr", "continue", "default",
+    "define",        "do",        "double",   "else",
+    "enum",          "extern",    "false",    "float",
+    "for",           "goto",      "if",       "include",
+    "inline",        "int",       "long",     "nullptr",
+    "pragma",        "register",  "restrict", "return",
+    "short",         "signed",    "sizeof",   "static",
+    "static_assert", "struct",    "switch",   "thread_local",
+    "true",          "typedef",   "typeof",   "typeof_unqual",
+    "union",         "unsigned",  "void",     "volatile",
+    "while"};
