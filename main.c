@@ -4,12 +4,14 @@
 #include <string.h>
 
 #include "file_contents.h"
+#include "gui.h"
 #include "tokens.h"
 #include "tui.h"
 
 #define VERSION "0.0.1"
 
-// TODO: go over files and make sure each global var and define follows consistent naming scheme
+// TODO: go over files and make sure each global var and define follows
+// consistent naming scheme
 
 const char *prog_name = "hl"; // NOTE: subject to change
 
@@ -104,11 +106,11 @@ int main(int argc, char **argv) {
     keyword_count = DEFAULT_KEYWORD_COUNT;
   }
 
+  // MAYBE: TODO: pass object instead of individual vars
   if (strcmp(mode, "gui") == 0) {
-    printf("unimplemented");
-    return 0;
+    return gui_loop(prog_name, filename, keywords, keyword_count, comment_kw);
   } else if (strcmp(mode, "tui") == 0) {
-    tui_loop(filename, keywords, keyword_count, comment_kw);
+    return tui_loop(filename, keywords, keyword_count, comment_kw);
   } else {
     fprintf(stderr, "unsupported mode '%s'\n", mode);
     return 1;

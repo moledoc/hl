@@ -39,8 +39,8 @@ void tui_print(Token **tokens, int tokens_count) {
   }
 }
 
-void tui_loop(char *filename, const char **keywords, const int keyword_count,
-              bool comment_kw) {
+int tui_loop(char *filename, const char **keywords, const int keyword_count,
+             bool comment_kw) {
   struct sigaction act;
   act.sa_handler = graceful_shutdown;
   sigaction(SIGINT, &act, NULL);
@@ -70,4 +70,5 @@ void tui_loop(char *filename, const char **keywords, const int keyword_count,
   }
   free_tokens(tokens, tokens_count);
   free_contents(contents);
+  return 0;
 }
