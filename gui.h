@@ -200,6 +200,7 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
 
   bool keep_window_open = true;
   bool ctrl_is_pressed = false;
+  bool needs_refreshing = false;
 
   while (keep_window_open) {
 
@@ -227,6 +228,13 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       } else if (ctrl_is_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                  sdl_event.wheel.y != 0) {
         font_size += sdl_event.wheel.y;
+        // TODO: improve boundaries
+        if (font_size <= 5) {
+          font_size = 5;
+        } else if (font_size >= 64) {
+          font_size = 64;
+        }
+        needs_refreshing = true;
       } else if (!ctrl_is_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                  sdl_event.wheel.y != 0) {
         vertical_offset += VERTICAL_SCROLL_MULT * sdl_event.wheel.y;
@@ -238,15 +246,16 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       bool was_refreshed = false;
       contents =
           check_contents(filename, contents, &last_modified, &was_refreshed);
-      if (was_refreshed) {
+      if (was_refreshed || needs_refreshing) {
+        needs_refreshing = false;
         tokens_count = 0;
         tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
                           comment_kw, &tokens_count);
         // free_textures(text_textures, textures_count); // TODO: handle free
         // properly
         textures_count = 0;
-        TexturePlus **text_textures = tokens_to_textures(
-            renderer, tokens, tokens_count, font_size, &textures_count);
+        text_textures = tokens_to_textures(renderer, tokens, tokens_count,
+                                           font_size, &textures_count);
       }
 
       err = gui_print(renderer, text_textures, textures_count, vertical_offset,
@@ -260,11 +269,7 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       SDL_RenderPresent(renderer);
       SDL_UpdateWindowSurface(window);
     }
-    // NOTE: added here so that the outer loop doesn't go crazy
-    // NOTE: might need to tweak this value a bit more:
-    // - lower feels snappier, but can take more resources
-    // - higher starts to feel laggy
-    SDL_Delay(25); // in milliseconds
+    SDL_Delay(33); // ~30FPS
   }
 
   SDL_DestroyWindow(window);
