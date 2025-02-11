@@ -39,4 +39,6 @@ FIXME <no color>
 REVIEWME <no color>
 HACK <no color>
 REMOVEME <no color>
+MAYBE <no color>
+EXAMPLE <no color>
 this line shouldnt end with newline <no color>

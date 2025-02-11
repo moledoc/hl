@@ -2,6 +2,10 @@
 
 #include "keywords.h"
 
+// TODO: handle comments (line comment is just a block comment that ends with
+// '\n')
+
+// TODO: REMOVEME:
 #define PRINT_BUFFER_SIZE 1024
 char *print_buffer =
     NULL; // NOTE: how to set: calloc(PRINT_BUFFER_SIZE, sizeof(char));

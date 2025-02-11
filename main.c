@@ -9,7 +9,9 @@
 
 #define VERSION "0.0.1"
 
-const char *prog_name = "syhl"; // NOTE: subject to change
+// TODO: go over files and make sure each global var and define follows consistent naming scheme
+
+const char *prog_name = "hl"; // NOTE: subject to change
 
 // TODO: revise flag names, current ones are probably only placeholders
 void help() {
@@ -27,8 +29,7 @@ void help() {
   printf("\t\tNOTE: keyword highlighting is based on file extension, can be "
          "overruled by --ext flag\n");
   printf("\t%s\n\t\thighlight more common keywords found in comments\n", "-kw");
-  printf("\t\tNOTE: supported common keywords: `TODO`, `NOTE`, `FIXME`, "
-         "`REVIEWME`, `HACK`\n");
+  printf("\t\tEXAMPLE: `TODO`, `NOTE`, `FIXME`\n");
   printf("\nEXAMPLES\n");
   printf("\t* TODO:\n");
   printf("\nAUTHOR\n");
