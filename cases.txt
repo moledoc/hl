@@ -47,4 +47,16 @@ REMOVEME <no color>
 MAYBE <no color>
 EXAMPLE <no color>
 REFACTORME <no color>
+// c-style line comment
+<no color>
+/* 
+c-style block comment
+*/
+<no color>
+# python-style comment
+<no color>
+<!--
+html style comment
+-->
+<no color>
 this line shouldnt end with newline <no color>

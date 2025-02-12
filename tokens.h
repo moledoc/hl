@@ -18,18 +18,26 @@ enum TOKEN_TYPE {
   TOKEN_NUMBER,
   TOKEN_KEYWORD,
   TOKEN_COMMENT_KEYWORD,
+  TOKEN_COMMENT,
   TOKEN_TOKEN_COUNT
 };
 
-static const char *TOKEN_NAMES[] = {"TOKEN_WORD", "TOKEN_STRING",
-                                    "TOKEN_NUMBER", "TOKEN_KEYWORD",
-                                    "TOKEN_COMMENT_KEYWORD"};
+static const char *TOKEN_NAMES[] = {
+    "TOKEN_WORD",    "TOKEN_STRING",          "TOKEN_NUMBER",
+    "TOKEN_KEYWORD", "TOKEN_COMMENT_KEYWORD", "TOKEN_COMMENT"};
 
 typedef struct {
   enum TOKEN_TYPE t;
   char *v;
   int vlen;
 } Token;
+
+typedef struct {
+  char *begin;
+  int begin_len;
+  char *end;
+  int end_len;
+} Comment;
 
 // NOTE: only handles decimals that use '.' as the separator
 bool is_number(const char *s) {
@@ -51,8 +59,21 @@ bool is_number(const char *s) {
   return true;
 }
 
+bool strcmp_window(const char *s1, const char *s2, int window_size) {
+  char *s1_cpy = (char *)s1;
+  char *s2_cpy = (char *)s2;
+
+  for (int i = 0; i < window_size; i += 1) {
+    if (s1_cpy[i] == '\0' || s2_cpy[i] == '\0' || s1_cpy[i] != s2_cpy[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 Token **tokenize(char *contents, int contents_length, const char **keywords,
-                 const int keyword_count, bool comment_kw, int *tokens_count) {
+                 const int keyword_count, bool comment_kw, int *tokens_count,
+                 Comment *line_comment, Comment *block_comment) {
   Token **tokens = calloc(contents_length + 1, sizeof(Token *));
 
   int prev_offset = 0;
@@ -77,6 +98,38 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
         offset += 1;
       }
       offset += 1; // account for closing quote
+
+      // TODO: REFACTORME:
+    } else if (line_comment != NULL &&
+               offset + line_comment->begin_len < contents_length &&
+               strcmp_window((const char *)(contents + offset),
+                             (const char *)line_comment->begin,
+                             line_comment->begin_len) == 1) {
+      while (offset + line_comment->end_len < contents_length &&
+             strcmp_window((const char *)(contents + offset),
+                           (const char *)line_comment->end,
+                           line_comment->end_len) != 1) {
+        offset += 1;
+      }
+      offset += 1; // account for line_comment end
+      token->t = TOKEN_COMMENT;
+
+      // TODO: REFACTORME:
+    } else if (block_comment != NULL &&
+               offset + block_comment->begin_len < contents_length &&
+               strcmp_window((const char *)(contents + offset),
+                             (const char *)block_comment->begin,
+                             block_comment->begin_len) == 1) {
+      while (offset + block_comment->end_len < contents_length &&
+             strcmp_window((const char *)(contents + offset),
+                           (const char *)block_comment->end,
+                           block_comment->end_len) != 1) {
+        offset += 1;
+      }
+      offset += 2; // account for block_comment end // REVIEWME: does +2 make
+                   // sense here?
+      token->t = TOKEN_COMMENT;
+
     } else {
       char c;
       while (offset < contents_length && (c = contents[offset]) &&
@@ -137,7 +190,7 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
   // NOTE: if we dont end with newline token,
   // then the last line is not printed in tui.
   // To get around it, we add the token, if needed.
-  if (*tokens_count > 1 && strcmp(tokens[*tokens_count - 1]->v, "\n") != 0) {
+  if (*tokens_count > 0 && strcmp(tokens[*tokens_count - 1]->v, "\n") != 0) {
     Token *eof_token = calloc(1, sizeof(Token));
     char *v = calloc(1, sizeof(char));
     memcpy(v, "\n", 1);

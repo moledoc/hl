@@ -67,10 +67,12 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
   int local_vertical_offset = 0;
 
   SDL_Color black = {0, 0, 0, 255};
+  SDL_Color red = {255, 0, 0, 255};
   SDL_Color green = {0, 255, 0, 255};
   SDL_Color blue = {0, 0, 255, 255};
   SDL_Color yellow = {255, 200, 0, 255};
   SDL_Color magenta = {255, 0, 255, 255};
+  SDL_Color grey = {128, 128, 128};
 
   for (int i = 0; i < tokens_count; i += 1) {
     SDL_Color textColor;
@@ -82,6 +84,8 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
       textColor = blue;
     } else if (tokens[i]->t == TOKEN_COMMENT_KEYWORD) {
       textColor = yellow;
+    } else if (tokens[i]->t == TOKEN_COMMENT) {
+      textColor = red;
     } else {
       textColor = black;
     }
@@ -149,7 +153,8 @@ int gui_print(SDL_Renderer *renderer, TexturePlus **textures,
 }
 
 int gui_loop(const char *prog_name, char *filename, const char **keywords,
-             const int keyword_count, bool comment_kw) {
+             const int keyword_count, bool comment_kw, Comment *line_comment,
+             Comment *block_comment) {
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     fprintf(stderr, "SDL_Init failed: '%s'\n", SDL_GetError());
@@ -189,8 +194,9 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
   char *contents = read_contents(filename);
   time_t last_modified = get_last_modified(filename);
   int tokens_count = 0;
-  Token **tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
-                            comment_kw, &tokens_count);
+  Token **tokens =
+      tokenize(contents, strlen(contents), keywords, keyword_count, comment_kw,
+               &tokens_count, line_comment, block_comment);
 
   TTF_Font *font = TTF_OpenFont(GUI_FONT, font_size);
   if (font == NULL) {
@@ -311,8 +317,9 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
           check_contents(filename, contents, &last_modified, &was_refreshed);
       if (was_refreshed) {
         tokens_count = 0;
-        tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
-                          comment_kw, &tokens_count);
+        tokens =
+            tokenize(contents, strlen(contents), keywords, keyword_count,
+                     comment_kw, &tokens_count, line_comment, block_comment);
         // free_textures(text_textures, textures_count); // TODO: handle free
         // properly
         textures_count = 0;

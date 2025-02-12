@@ -32,6 +32,10 @@ void help() {
          "overruled by --ext flag\n");
   printf("\t%s\n\t\thighlight more common keywords found in comments\n", "-kw");
   printf("\t\tEXAMPLE: `TODO`, `NOTE`, `FIXME`\n");
+  printf("\t%s\n\t\tcommenting style\n",
+         "-c COMMENT-STYLE, --comment-style COMMENT-STYLE");
+  printf(
+      "\t\tNOTE: supported comment-styles: none (default), c, python, html\n");
   printf("\nEXAMPLES\n");
   printf("\t* TODO:\n");
   printf("\nAUTHOR\n");
@@ -46,6 +50,7 @@ int main(int argc, char **argv) {
   char ext[16] = {0};
   char *mode = "gui";
   bool comment_kw = false;
+  char *comment = NULL;
   const char **keywords = NULL;
   int keyword_count = 0;
 
@@ -70,6 +75,11 @@ int main(int argc, char **argv) {
       i += 1;
     } else if (strcmp("-kw", flag) == 0) {
       comment_kw = true;
+    } else if ((strcmp("-c", flag) == 0 ||
+                strcmp("--comment-style", flag) == 0) &&
+               i + 1 < argc) {
+      comment = argv[i + 1];
+      i += 1;
     } else if (i == argc - 1) {
       filename = flag;
     } else {
@@ -106,11 +116,30 @@ int main(int argc, char **argv) {
     keyword_count = DEFAULT_KEYWORD_COUNT;
   }
 
+  Comment *line_comment = NULL;
+  Comment *block_comment = NULL;
+  // FIXME: mem leak
+  if (strcmp(comment, "c") == 0) {
+    line_comment = calloc(1, sizeof(Comment));
+    line_comment->begin = "//";
+    line_comment->begin_len = strlen("//");
+    line_comment->end = "\n";
+    line_comment->end_len = strlen("\n");
+    //
+    block_comment = calloc(1, sizeof(Comment));
+    block_comment->begin = "/*";
+    block_comment->begin_len = strlen("/*");
+    block_comment->end = "*/";
+    block_comment->end_len = strlen("*/");
+  }
+
   // MAYBE: TODO: pass object instead of individual vars
   if (strcmp(mode, "gui") == 0) {
-    return gui_loop(prog_name, filename, keywords, keyword_count, comment_kw);
+    return gui_loop(prog_name, filename, keywords, keyword_count, comment_kw,
+                    line_comment, block_comment);
   } else if (strcmp(mode, "tui") == 0) {
-    return tui_loop(filename, keywords, keyword_count, comment_kw);
+    return tui_loop(filename, keywords, keyword_count, comment_kw, line_comment,
+                    block_comment);
   } else {
     fprintf(stderr, "unsupported mode '%s'\n", mode);
     return 1;

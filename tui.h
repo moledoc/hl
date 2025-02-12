@@ -33,6 +33,10 @@ void tui_print(Token **tokens, int tokens_count) {
       printf("\033[33m"); // YELLOW FOREGROUND
       printf("%s", tokens[i]->v);
       printf("\033[30m"); // BLACK FOREGROUND
+    } else if (tokens[i]->t == TOKEN_COMMENT) {
+      printf("\033[90m"); // GREY FOREGROUND
+      printf("%s", tokens[i]->v);
+      printf("\033[30m"); // BLACK FOREGROUND
     } else {
       printf("%s", tokens[i]->v);
     }
@@ -40,7 +44,7 @@ void tui_print(Token **tokens, int tokens_count) {
 }
 
 int tui_loop(char *filename, const char **keywords, const int keyword_count,
-             bool comment_kw) {
+             bool comment_kw, Comment *line_comment, Comment *block_comment) {
   struct sigaction act;
   act.sa_handler = graceful_shutdown;
   sigaction(SIGINT, &act, NULL);
@@ -49,8 +53,9 @@ int tui_loop(char *filename, const char **keywords, const int keyword_count,
   char *contents = read_contents(filename);
   time_t last_modified = get_last_modified(filename);
   int tokens_count = 0;
-  Token **tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
-                            comment_kw, &tokens_count);
+  Token **tokens =
+      tokenize(contents, strlen(contents), keywords, keyword_count, comment_kw,
+               &tokens_count, line_comment, block_comment);
 
   tui_print(tokens, tokens_count);
   // print_buffer = calloc(tokens_count, sizeof(char *)); // REMOVEME:
@@ -64,7 +69,7 @@ int tui_loop(char *filename, const char **keywords, const int keyword_count,
     if (was_refreshed) {
       tokens_count = 0;
       tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
-                        comment_kw, &tokens_count);
+                        comment_kw, &tokens_count, line_comment, block_comment);
       tui_print(tokens, tokens_count);
     }
   }
