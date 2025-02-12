@@ -14,6 +14,9 @@
 // TODO: refactor once have working solution
 // TODO: when and what should be _Quit?
 // TODO: fix mem leaks
+// TODO: check performance on diff machines; eg laptop w/ debian is fine, but
+// win+wsl2 is slow when zooming; MAYBE: theres a better way to put text on
+// screen in SDL2
 
 /*
 TODO: notes for documentation
@@ -47,16 +50,10 @@ typedef struct {
 } TexturePlus;
 
 // allocs memory
-TexturePlus **tokens_to_textures(SDL_Renderer *renderer, Token **tokens,
-                                 int tokens_count, int font_size,
-                                 int *textures_count) {
+TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
+                                 Token **tokens, int tokens_count,
+                                 int font_size, int *textures_count) {
   TexturePlus **textures = calloc(tokens_count, sizeof(TexturePlus *));
-
-  TTF_Font *font = TTF_OpenFont(GUI_FONT, font_size);
-  if (font == NULL) {
-    fprintf(stderr, "failed to load font: %s\n", TTF_GetError());
-    return NULL;
-  }
 
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
@@ -179,9 +176,16 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
   Token **tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
                             comment_kw, &tokens_count);
 
+  TTF_Font *font = TTF_OpenFont(GUI_FONT, font_size);
+  if (font == NULL) {
+    fprintf(stderr, "failed to load font: %s\n", TTF_GetError());
+    SDL_Quit();
+    return EXIT_FAILURE;
+  }
+
   int textures_count = 0;
   TexturePlus **text_textures = tokens_to_textures(
-      renderer, tokens, tokens_count, font_size, &textures_count);
+      renderer, font, tokens, tokens_count, font_size, &textures_count);
 
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
@@ -234,6 +238,7 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
         } else if (font_size >= 64) {
           font_size = 64;
         }
+        TTF_SetFontSize(font, font_size);
         needs_refreshing = true;
       } else if (!ctrl_is_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                  sdl_event.wheel.y != 0) {
@@ -246,15 +251,19 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       bool was_refreshed = false;
       contents =
           check_contents(filename, contents, &last_modified, &was_refreshed);
-      if (was_refreshed || needs_refreshing) {
-        needs_refreshing = false;
+      if (was_refreshed) {
         tokens_count = 0;
         tokens = tokenize(contents, strlen(contents), keywords, keyword_count,
                           comment_kw, &tokens_count);
         // free_textures(text_textures, textures_count); // TODO: handle free
         // properly
         textures_count = 0;
-        text_textures = tokens_to_textures(renderer, tokens, tokens_count,
+        text_textures = tokens_to_textures(renderer, font, tokens, tokens_count,
+                                           font_size, &textures_count);
+      } else if (needs_refreshing) {
+        needs_refreshing = false;
+        textures_count = 0;
+        text_textures = tokens_to_textures(renderer, font, tokens, tokens_count,
                                            font_size, &textures_count);
       }
 
