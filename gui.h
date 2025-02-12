@@ -28,6 +28,10 @@ Used these as templates/starting point:
 - https://dev.to/deusinmachina/sdl-tutorial-in-c-part-2-displaying-text-o55
 - https://dev.to/noah11012/using-sdl2-opening-a-window-79c
 
+Additional materials:
+- http://thenumb.at/cpp-course/sdl2/07/07.html
+- http://thenumb.at/cpp-course/sdl2/08/08.html
+
 */
 
 #define SCREEN_WIDTH 800
@@ -42,12 +46,16 @@ Used these as templates/starting point:
 #define HORIZONTAL_PADDING 10
 #define VERTICAL_PADDING 10
 
+#define FRAME_DELAY 33 // in milliseconds
+
 typedef struct {
   struct SDL_Texture *texture;
   bool is_newline;
   int w;
   int h;
 } TexturePlus;
+
+int sign(int a) { return -1 * (a < 0) + 1 * (a > 0); }
 
 // allocs memory
 TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
@@ -57,18 +65,25 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
 
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
+
+  SDL_Color black = {0, 0, 0, 255};
+  SDL_Color green = {0, 255, 0, 255};
+  SDL_Color blue = {0, 0, 255, 255};
+  SDL_Color yellow = {255, 200, 0, 255};
+  SDL_Color magenta = {255, 0, 255, 255};
+
   for (int i = 0; i < tokens_count; i += 1) {
     SDL_Color textColor;
     if (tokens[i]->t == TOKEN_STRING) {
-      textColor = (SDL_Color){0, 255, 0, 255}; // green
+      textColor = green;
     } else if (tokens[i]->t == TOKEN_NUMBER) {
-      textColor = (SDL_Color){255, 0, 255, 255}; // magenta
+      textColor = magenta;
     } else if (tokens[i]->t == TOKEN_KEYWORD) {
-      textColor = (SDL_Color){0, 0, 255, 255}; // blue
+      textColor = blue;
     } else if (tokens[i]->t == TOKEN_COMMENT_KEYWORD) {
-      textColor = (SDL_Color){255, 200, 0, 255}; // yellow
+      textColor = yellow;
     } else {
-      textColor = (SDL_Color){0, 0, 0, 255}; // black
+      textColor = black;
     }
 
     SDL_Surface *textSurface =
@@ -95,6 +110,7 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
 
     textures[*textures_count] = tp;
     *textures_count += 1;
+    SDL_FreeSurface(textSurface);
   }
   return textures;
 }
@@ -206,7 +222,12 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
   bool ctrl_is_pressed = false;
   bool needs_refreshing = false;
 
+  // REMOVEME: when zooming with mouse is removed
+  // int zoom_counter = 0;
+
   while (keep_window_open) {
+
+    Uint32 start = SDL_GetTicks();
 
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event) > 0) {
@@ -229,10 +250,33 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
                  (sdl_event.key.keysym.sym == SDLK_LCTRL ||
                   sdl_event.key.keysym.sym == SDLK_RCTRL)) {
         ctrl_is_pressed = false;
-      } else if (ctrl_is_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
-                 sdl_event.wheel.y != 0) {
-        font_size += sdl_event.wheel.y;
+
+        /*
+          // NOTE: zooming with mouse wheel introduced a performance issue Im
+          not ready to deal with } else if (ctrl_is_pressed && sdl_event.type ==
+          SDL_MOUSEWHEEL && sdl_event.wheel.y != 0) { font_size += 5 *
+          sign(sdl_event.wheel.y);
+                // TODO: improve boundaries
+                if (font_size <= 5) {
+                  font_size = 5;
+                } else if (font_size >= 64) {
+                  font_size = 64;
+                }
+                TTF_SetFontSize(font, font_size);
+                needs_refreshing = true;
+                zoom_counter += 1;
+                if (zoom_counter > 1) {
+                  zoom_counter = 0;
+                  continue;
+                }
+        */
+
+      } else if (ctrl_is_pressed && sdl_event.type == SDL_KEYDOWN &&
+                 sdl_event.key.state == SDL_PRESSED &&
+                 sdl_event.key.keysym.sym == SDLK_EQUALS) {
+        font_size += 5;
         // TODO: improve boundaries
+        // REFACTORME:
         if (font_size <= 5) {
           font_size = 5;
         } else if (font_size >= 64) {
@@ -240,6 +284,20 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
         }
         TTF_SetFontSize(font, font_size);
         needs_refreshing = true;
+      } else if (ctrl_is_pressed && sdl_event.type == SDL_KEYDOWN &&
+                 sdl_event.key.state == SDL_PRESSED &&
+                 sdl_event.key.keysym.sym == SDLK_MINUS) {
+        font_size -= 5;
+        // TODO: improve boundaries
+        // REFACTORME:
+        if (font_size <= 5) {
+          font_size = 5;
+        } else if (font_size >= 64) {
+          font_size = 64;
+        }
+        TTF_SetFontSize(font, font_size);
+        needs_refreshing = true;
+
       } else if (!ctrl_is_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                  sdl_event.wheel.y != 0) {
         vertical_offset += VERTICAL_SCROLL_MULT * sdl_event.wheel.y;
@@ -278,7 +336,14 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       SDL_RenderPresent(renderer);
       SDL_UpdateWindowSurface(window);
     }
-    SDL_Delay(33); // ~30FPS
+
+    Uint32 end = SDL_GetTicks();
+    float elapsed = end - start;
+    if (elapsed > FRAME_DELAY) {
+      continue;
+    }
+
+    SDL_Delay(FRAME_DELAY - elapsed); // ~30FPS
   }
 
   SDL_DestroyWindow(window);
