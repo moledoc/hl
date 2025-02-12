@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "keywords.h"
 
 // TODO: handle comments (line comment is just a block comment that ends with
@@ -28,6 +30,26 @@ typedef struct {
   char *v;
   int vlen;
 } Token;
+
+// NOTE: only handles decimals that use '.' as the separator
+bool is_number(const char *s) {
+  char *s_cpy = (char *)s;
+  int s_len = 0;
+  int dot_count = 0;
+  char c;
+  while ((c = *(s_cpy++)) != '\0') {
+    s_len += 1;
+    if (c == '.') {
+      dot_count += 1;
+    } else if (c < '0' || '9' < c) {
+      return false;
+    }
+    if (dot_count > 1) {
+      return false;
+    }
+  }
+  return true;
+}
 
 Token **tokenize(char *contents, int contents_length, const char **keywords,
                  const int keyword_count, bool comment_kw, int *tokens_count) {
@@ -79,9 +101,7 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
     memcpy(token->v, contents + prev_offset, vlen);
 
     {
-      // TODO: handle zero as string more generally
-      if (strtof(token->v, NULL) != 0 ||
-          (token->vlen == 1 && *(token->v) == '0')) {
+      if (is_number((const char *)token->v)) {
         token->t = TOKEN_NUMBER;
       }
     }

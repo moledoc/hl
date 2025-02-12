@@ -7,6 +7,10 @@ test  <no color>
 0.00000001  <no color>
 0.00abc  <no color>
 07.html <no color>
+07 <no color>
+06.12315 <no color>
+1230.0 <no color>
+12321. <no color>
 ''  <no color>
 ""  <no color>
 ' '  <no color>
