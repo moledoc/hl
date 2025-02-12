@@ -34,8 +34,7 @@ void help() {
   printf("\t\tEXAMPLE: `TODO`, `NOTE`, `FIXME`\n");
   printf("\t%s\n\t\tcommenting style\n",
          "-c COMMENT-STYLE, --comment-style COMMENT-STYLE");
-  printf(
-      "\t\tNOTE: supported comment-styles: none (default), c, python, html\n");
+  printf("\t\tNOTE: supported comment-styles: none (default), c, py, html\n");
   printf("\nEXAMPLES\n");
   printf("\t* TODO:\n");
   printf("\nAUTHOR\n");
@@ -131,6 +130,18 @@ int main(int argc, char **argv) {
     block_comment->begin_len = strlen("/*");
     block_comment->end = "*/";
     block_comment->end_len = strlen("*/");
+  } else if (strcmp(comment, "py") == 0) {
+    line_comment = calloc(1, sizeof(Comment));
+    line_comment->begin = "#";
+    line_comment->begin_len = strlen("#");
+    line_comment->end = "\n";
+    line_comment->end_len = strlen("\n");
+  } else if (strcmp(comment, "html") == 0) {
+    block_comment = calloc(1, sizeof(Comment));
+    block_comment->begin = "<!--";
+    block_comment->begin_len = strlen("<!--");
+    block_comment->end = "-->";
+    block_comment->end_len = strlen("-->");
   }
 
   // MAYBE: TODO: pass object instead of individual vars

@@ -40,7 +40,7 @@ Additional materials:
   (-10) // NOTE: neg to make scrolling up move page up and vice versa
 #define VERTICAL_SCROLL_MULT 20
 
-#define GUI_FONT "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
+#define GUI_FONT "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
 #define DEFAULT_FONT_SIZE 20
 
 #define HORIZONTAL_PADDING 10
@@ -84,8 +84,9 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
       textColor = blue;
     } else if (tokens[i]->t == TOKEN_COMMENT_KEYWORD) {
       textColor = yellow;
+      // FIXME: on block comments newline chars are not properly handled
     } else if (tokens[i]->t == TOKEN_COMMENT) {
-      textColor = red;
+      textColor = grey;
     } else {
       textColor = black;
     }

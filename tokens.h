@@ -111,7 +111,7 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
                            line_comment->end_len) != 1) {
         offset += 1;
       }
-      offset += 1; // account for line_comment end
+      offset += line_comment->end_len; // account for line_comment end
       token->t = TOKEN_COMMENT;
 
       // TODO: REFACTORME:
@@ -126,8 +126,7 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
                            block_comment->end_len) != 1) {
         offset += 1;
       }
-      offset += 2; // account for block_comment end // REVIEWME: does +2 make
-                   // sense here?
+      offset += block_comment->end_len; // account for block_comment end
       token->t = TOKEN_COMMENT;
 
     } else {
