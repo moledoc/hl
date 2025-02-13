@@ -160,7 +160,7 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
       while (offset < contents_length && (c = contents[offset]) &&
              ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' ||
               '0' <= c && c <= '9' || c == '+' || c == '-' || c == '.' ||
-              c == '\'' || c == '"')) {
+              c == '\'' || c == '"' || c == '_')) {
         offset += 1;
       }
     }
