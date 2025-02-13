@@ -235,7 +235,7 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
     memcpy(v, "\n", 1);
     eof_token->v = v;
     eof_token->vlen = 1;
-    eof_token->t = TOKEN_WORD;
+    eof_token->t = TOKEN_NEWLINE;
     tokens[*tokens_count] = eof_token;
     *tokens_count += 1;
   }
