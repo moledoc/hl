@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
   char ext[16] = {0};
   char *mode = "gui";
   bool comment_kw = false;
-  char *comment = NULL;
+  char *comment = "";
   const char **keywords = NULL;
   int keyword_count = 0;
 
