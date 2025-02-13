@@ -19,12 +19,15 @@ enum TOKEN_TYPE {
   TOKEN_KEYWORD,
   TOKEN_COMMENT_KEYWORD,
   TOKEN_COMMENT,
+  TOKEN_WHITESPACE,
+  TOKEN_NEWLINE,
   TOKEN_TOKEN_COUNT
 };
 
 static const char *TOKEN_NAMES[] = {
-    "TOKEN_WORD",    "TOKEN_STRING",          "TOKEN_NUMBER",
-    "TOKEN_KEYWORD", "TOKEN_COMMENT_KEYWORD", "TOKEN_COMMENT"};
+    "TOKEN_WORD",       "TOKEN_STRING",          "TOKEN_NUMBER",
+    "TOKEN_KEYWORD",    "TOKEN_COMMENT_KEYWORD", "TOKEN_COMMENT",
+    "TOKEN_WHITESPACE", "TOKEN_NEWLINE"};
 
 typedef struct {
   enum TOKEN_TYPE t;
@@ -128,6 +131,20 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
       }
       offset += block_comment->end_len; // account for block_comment end
       token->t = TOKEN_COMMENT;
+
+    } else if (offset < contents_length && contents[offset] == ' ' ||
+               contents[offset] == '\t') {
+      char c;
+      while (offset < contents_length && (c = contents[offset]) &&
+             (c == ' ' || c == '\t')) {
+        offset += 1;
+      }
+      token->t = TOKEN_WHITESPACE;
+
+    } else if (offset < contents_length && contents[offset] == '\n') {
+
+      offset += 1;
+      token->t = TOKEN_NEWLINE;
 
     } else {
       char c;

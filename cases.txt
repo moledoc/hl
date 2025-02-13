@@ -1,3 +1,4 @@
+<whitespace>  	<whitespace> <no color>
 test  <no color>
 5  <no color>
 5.2  <no color>
