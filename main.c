@@ -106,10 +106,14 @@ int main(int argc, char **argv) {
     free(filename_dup); // free strdup
   }
 
+  // TODO: add other language extension recognition
   if (strcmp(ext, "cpp") == 0 || strcmp(ext, "c") == 0 ||
       strcmp(ext, "h") == 0) {
     keywords = (const char **)c_keywords;
     keyword_count = C_KEYWORD_COUNT;
+    if (strlen(comment) == 0) {
+      comment = "c";
+    }
   } else {
     keywords = (const char **)default_keywords;
     keyword_count = DEFAULT_KEYWORD_COUNT;

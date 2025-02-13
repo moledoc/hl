@@ -81,12 +81,20 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
 
   int prev_offset = 0;
   int offset = 0;
+
+  bool is_line_comment = false;
+  bool is_block_comment = false;
+
   while (offset < contents_length) {
 
     Token *token = calloc(1, sizeof(Token));
     token->t = TOKEN_WORD;
 
-    if (contents[offset] == '"' || contents[offset] == '\'') {
+    if (0) { // NOTE: dummy if
+
+    } else if (!is_line_comment && !is_block_comment &&
+                   contents[offset] == '"' ||
+               contents[offset] == '\'') {
       char closing_quote = contents[offset];
       token->t = TOKEN_STRING;
       offset += 1; // account for opening quote
@@ -108,14 +116,15 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
                strcmp_window((const char *)(contents + offset),
                              (const char *)line_comment->begin,
                              line_comment->begin_len) == 1) {
-      while (offset + line_comment->end_len < contents_length &&
-             strcmp_window((const char *)(contents + offset),
-                           (const char *)line_comment->end,
-                           line_comment->end_len) != 1) {
-        offset += 1;
-      }
-      offset += line_comment->end_len; // account for line_comment end
-      token->t = TOKEN_COMMENT;
+      is_line_comment = true;
+      offset += line_comment->begin_len;
+    } else if (line_comment != NULL &&
+               offset + line_comment->end_len < contents_length &&
+               strcmp_window((const char *)(contents + offset),
+                             (const char *)line_comment->end,
+                             line_comment->end_len) == 1) {
+      is_line_comment = false;
+      offset += line_comment->end_len;
 
       // TODO: REFACTORME:
     } else if (block_comment != NULL &&
@@ -123,14 +132,17 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
                strcmp_window((const char *)(contents + offset),
                              (const char *)block_comment->begin,
                              block_comment->begin_len) == 1) {
-      while (offset + block_comment->end_len < contents_length &&
-             strcmp_window((const char *)(contents + offset),
-                           (const char *)block_comment->end,
-                           block_comment->end_len) != 1) {
-        offset += 1;
-      }
-      offset += block_comment->end_len; // account for block_comment end
-      token->t = TOKEN_COMMENT;
+      is_block_comment = true;
+      offset += block_comment->begin_len;
+    } else if (block_comment != NULL &&
+               offset + block_comment->end_len < contents_length &&
+               strcmp_window((const char *)(contents + offset),
+                             (const char *)block_comment->end,
+                             block_comment->end_len) == 1) {
+      is_block_comment = false;
+      offset += block_comment->end_len;
+      token->t = TOKEN_COMMENT; // NOTE: here is fine to add, since block
+                                // comment doesn't end with newline
 
     } else if (offset < contents_length && contents[offset] == ' ' ||
                contents[offset] == '\t') {
@@ -141,16 +153,14 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
       }
       token->t = TOKEN_WHITESPACE;
 
-    } else if (offset < contents_length && contents[offset] == '\n') {
-
-      offset += 1;
-      token->t = TOKEN_NEWLINE;
-
     } else {
       char c;
+      // NOTE: quotes are added so that comments are tokenized correctly
+      // MAYBE: not sure if this causes some issues, so keep an eye out
       while (offset < contents_length && (c = contents[offset]) &&
              ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' ||
-              '0' <= c && c <= '9' || c == '+' || c == '-' || c == '.')) {
+              '0' <= c && c <= '9' || c == '+' || c == '-' || c == '.' ||
+              c == '\'' || c == '"')) {
         offset += 1;
       }
     }
@@ -187,13 +197,26 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
     }
 
     {
-      if (comment_kw && token->t == TOKEN_WORD) {
+      if (comment_kw && token->t == TOKEN_COMMENT || token->t == TOKEN_WORD) {
         for (int i = 0; i < COMMENT_KEYWORD_COUNT; i += 1) {
           if (strcmp(token->v, comment_keywords[i]) == 0) {
             token->t = TOKEN_COMMENT_KEYWORD;
             break;
           }
         }
+      }
+    }
+
+    {
+      if (token->t == TOKEN_WORD && token->vlen == 1 && *(token->v) == '\n') {
+        token->t = TOKEN_NEWLINE;
+      }
+    }
+
+    {
+      if ((is_line_comment || is_block_comment) &&
+          (token->t != TOKEN_COMMENT_KEYWORD && token->t != TOKEN_NEWLINE)) {
+        token->t = TOKEN_COMMENT;
       }
     }
 

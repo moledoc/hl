@@ -1,5 +1,11 @@
 <whitespace>  	<whitespace> <no color>
+<newline>
+
+<newline>
+
 test  <no color>
+test.test.test  <no color>
+
 5  <no color>
 5.2  <no color>
 0  <no color>
@@ -12,6 +18,7 @@ test  <no color>
 06.12315 <no color>
 1230.0 <no color>
 12321. <no color>
+
 ''  <no color>
 ""  <no color>
 ' '  <no color>
@@ -38,7 +45,7 @@ test  <no color>
 '\\lala'  <no color>
 'lala\\'  <no color>
 '\\lala\\'  <no color>
-test.test.test  <no color>
+
 TODO <no color>
 NOTE <no color>
 FIXME <no color>
@@ -48,6 +55,7 @@ REMOVEME <no color>
 MAYBE <no color>
 EXAMPLE <no color>
 REFACTORME <no color>
+
 // c-style line comment
 <no color>
 /* 
@@ -60,4 +68,24 @@ c-style block comment
 html style comment
 -->
 <no color>
+
+/* c-style block comment */ <no color>
+<!-- html style comment --> <no color>
+
+// c-style line comment with NOTE: comment keyword
+<no color>
+/* 
+c-style block comment with NOTE: comment keyword
+*/
+<no color>
+# python-style comment with NOTE: comment keyword
+<no color>
+<!--
+html style comment with NOTE: comment keyword
+-->
+<no color>
+
+// c-style line comment: it's having a english sentence
+<no color>
+
 this line shouldnt end with newline <no color>

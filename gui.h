@@ -109,7 +109,7 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
 
     TexturePlus *tp = calloc(1, sizeof(TexturePlus));
     tp->texture = textTexture;
-    tp->is_newline = tokens[i]->vlen == 1 && *(tokens[i]->v) == '\n';
+    tp->is_newline = tokens[i]->t == TOKEN_NEWLINE;
     tp->w = textSurface->w;
     tp->h = textSurface->h;
 
@@ -198,6 +198,9 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
   Token **tokens =
       tokenize(contents, strlen(contents), keywords, keyword_count, comment_kw,
                &tokens_count, line_comment, block_comment);
+
+  // print_buffer = calloc(tokens_count, sizeof(char *)); // REMOVEME:
+  // print_tokens(tokens, tokens_count);                  // REMOVEME:
 
   TTF_Font *font = TTF_OpenFont(GUI_FONT, font_size);
   if (font == NULL) {
