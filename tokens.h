@@ -30,6 +30,8 @@ static const char *TOKEN_NAMES[] = {
     "TOKEN_KEYWORD", "TOKEN_COMMENT_KEYWORD", "TOKEN_COMMENT",
     "TOKEN_NEWLINE", "TOKEN_SPACES",          "TOKEN_TABS"};
 
+int TAB_WIDTH = 4;
+
 typedef struct {
   enum TOKEN_TYPE t;
   char *v;
@@ -181,9 +183,15 @@ Token **tokenize(char *contents, int contents_length, const char **keywords,
 
     int vlen = offset - prev_offset;
 
-    token->v = calloc(vlen + 1, sizeof(char));
-    token->vlen = vlen;
-    memcpy(token->v, contents + prev_offset, vlen);
+    if (token->t == TOKEN_TABS) {
+      token->v = calloc(TAB_WIDTH * vlen + 1, sizeof(char));
+      token->vlen = TAB_WIDTH * vlen;
+      memset(token->v, ' ', TAB_WIDTH * vlen);
+    } else {
+      token->v = calloc(vlen + 1, sizeof(char));
+      token->vlen = vlen;
+      memcpy(token->v, contents + prev_offset, vlen);
+    }
 
     {
       if (is_number((const char *)token->v)) {
