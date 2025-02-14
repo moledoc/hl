@@ -1,4 +1,5 @@
-<whitespace>  	<whitespace> <no color>
+<spaces>    <spaces> <no color>
+  <tabs>	<tabs> <no color>
 <newline>
 
 <newline>

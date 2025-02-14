@@ -91,9 +91,15 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
       textColor = black;
     }
 
-    SDL_Surface *textSurface =
-        TTF_RenderText_Solid(font, tokens[i]->v, textColor);
+    char *text = tokens[i]->v;
+    char *expand_tabs = NULL;
+    if (tokens[i]->t == TOKEN_TABS) {
+      expand_tabs = calloc(tokens[i]->vlen * 4 + 1, sizeof(char));
+      memset(expand_tabs, ' ', tokens[i]->vlen * 4);
+      text = expand_tabs;
+    }
 
+    SDL_Surface *textSurface = TTF_RenderText_Solid(font, text, textColor);
     if (textSurface == NULL) {
       fprintf(stderr, "failed to create text surface: %s\n", TTF_GetError());
       return NULL;
@@ -116,6 +122,10 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     textures[*textures_count] = tp;
     *textures_count += 1;
     SDL_FreeSurface(textSurface);
+
+    if (expand_tabs != NULL) {
+      free(expand_tabs);
+    }
   }
   return textures;
 }
@@ -199,8 +209,8 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       tokenize(contents, strlen(contents), keywords, keyword_count, comment_kw,
                &tokens_count, line_comment, block_comment);
 
-  // print_buffer = calloc(tokens_count, sizeof(char *)); // REMOVEME:
-  // print_tokens(tokens, tokens_count);                  // REMOVEME:
+  print_buffer = calloc(tokens_count, sizeof(char *)); // REMOVEME:
+  print_tokens(tokens, tokens_count);                  // REMOVEME:
 
   TTF_Font *font = TTF_OpenFont(GUI_FONT, font_size);
   if (font == NULL) {
@@ -263,8 +273,8 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
 
         /*
           // NOTE: zooming with mouse wheel introduced a performance issue Im
-          not ready to deal with } else if (ctrl_is_pressed && sdl_event.type ==
-          SDL_MOUSEWHEEL && sdl_event.wheel.y != 0) { font_size += 5 *
+          not ready to deal with } else if (ctrl_is_pressed && sdl_event.type
+          == SDL_MOUSEWHEEL && sdl_event.wheel.y != 0) { font_size += 5 *
           sign(sdl_event.wheel.y);
                 // TODO: improve boundaries
                 if (font_size <= 5) {
