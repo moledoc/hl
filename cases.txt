@@ -89,4 +89,6 @@ html style comment with NOTE: comment keyword
 // c-style line comment: it's having a english sentence
 <no color>
 
+utf8 - õüäö
+
 this line shouldnt end with newline <no color>

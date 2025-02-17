@@ -17,6 +17,11 @@
 // TODO: check performance on diff machines; eg laptop w/ debian is fine, but
 // win+wsl2 is slow when zooming; MAYBE: theres a better way to put text on
 // screen in SDL2
+// MAYBE: TODO: use SDL_SetTextureColorMod to set colors in textures instead of
+// current approach.
+// TODO: explore
+// [SDL_ttf.c](https://github.com/libsdl-org/SDL_ttf/blob/SDL2/SDL_ttf.c) for
+// better font handling (eg TTF_RenderText_Solid_Wrapped)
 
 /*
 TODO: notes for documentation
@@ -105,7 +110,7 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     }
 
     SDL_Surface *textSurface =
-        TTF_RenderText_Solid(font, tokens[i]->v, textColor);
+        TTF_RenderUTF8_Solid(font, tokens[i]->v, textColor);
     if (textSurface == NULL) {
       fprintf(stderr, "failed to create text surface: %s\n", TTF_GetError());
       return NULL;
@@ -163,11 +168,20 @@ int gui_print(SDL_Renderer *renderer, TexturePlus **textures,
         /*printf("HERE: {x: %d, y: %d} --> {x: %d, y: %d}\n",
                mouse_action.start.x, mouse_action.start.y, mouse_action.end.x,
                mouse_action.end.y);*/
+
+        // TODO: carve out rect to be highlighted;
+        // currently carving partial words
+        // to show how to get highlight, when cursor on word
+        SDL_Rect highlight_rect = {
+            HORIZONTAL_PADDING + local_horizontal_offset + horizontal_offset,
+            VERTICAL_PADDING + local_vertical_offset + vertical_offset,
+            textures[i]->w - 10, textures[i]->h - 10};
+
         SDL_Color prev = {0};
         SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                                (Uint8 *)&prev.b, (Uint8 *)&prev.a);
         SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
-        SDL_RenderFillRect(renderer, &textRect);
+        SDL_RenderFillRect(renderer, &highlight_rect);
         SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
       }
 
