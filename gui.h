@@ -48,12 +48,33 @@ Additional materials:
 
 #define FRAME_DELAY 33 // in milliseconds
 
+int FONT_SIZE = DEFAULT_FONT_SIZE;
+const SDL_Color BLACK = {0, 0, 0, 255};
+const SDL_Color RED = {255, 0, 0, 255};
+const SDL_Color GREEN = {0, 255, 0, 255};
+const SDL_Color BLUE = {0, 0, 255, 255};
+const SDL_Color YELLOW = {255, 200, 0, 255};
+const SDL_Color MAGENTA = {255, 0, 255, 255};
+const SDL_Color GREY = {128, 128, 128};
+const SDL_Color MOUSE_HIGHLIGHT = {128, 128, 128, 128};
+
 typedef struct {
   struct SDL_Texture *texture;
   bool is_newline;
   int w;
   int h;
 } TexturePlus;
+
+typedef struct {
+  int x;
+  int y;
+} MousePos;
+
+typedef struct {
+  MousePos start;
+  MousePos end;
+  bool is_highlight;
+} MouseAction;
 
 int sign(int a) { return -1 * (a < 0) + 1 * (a > 0); }
 
@@ -66,29 +87,21 @@ TexturePlus **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
 
-  SDL_Color black = {0, 0, 0, 255};
-  SDL_Color red = {255, 0, 0, 255};
-  SDL_Color green = {0, 255, 0, 255};
-  SDL_Color blue = {0, 0, 255, 255};
-  SDL_Color yellow = {255, 200, 0, 255};
-  SDL_Color magenta = {255, 0, 255, 255};
-  SDL_Color grey = {128, 128, 128};
-
   for (int i = 0; i < tokens_count; i += 1) {
     SDL_Color textColor;
     if (tokens[i]->t == TOKEN_STRING) {
-      textColor = green;
+      textColor = GREEN;
     } else if (tokens[i]->t == TOKEN_NUMBER) {
-      textColor = magenta;
+      textColor = MAGENTA;
     } else if (tokens[i]->t == TOKEN_KEYWORD) {
-      textColor = blue;
+      textColor = BLUE;
     } else if (tokens[i]->t == TOKEN_COMMENT_KEYWORD) {
-      textColor = yellow;
+      textColor = YELLOW;
       // FIXME: on block comments newline chars are not properly handled
     } else if (tokens[i]->t == TOKEN_COMMENT) {
-      textColor = grey;
+      textColor = GREY;
     } else {
-      textColor = black;
+      textColor = BLACK;
     }
 
     SDL_Surface *textSurface =
@@ -129,7 +142,8 @@ void free_textures(TexturePlus **textures, int textures_count) {
 }
 
 int gui_print(SDL_Renderer *renderer, TexturePlus **textures,
-              int textures_count, int vertical_offset, int horizontal_offset) {
+              int textures_count, int vertical_offset, int horizontal_offset,
+              MouseAction mouse_action) {
 
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
@@ -143,6 +157,20 @@ int gui_print(SDL_Renderer *renderer, TexturePlus **textures,
           HORIZONTAL_PADDING + local_horizontal_offset + horizontal_offset,
           VERTICAL_PADDING + local_vertical_offset + vertical_offset,
           textures[i]->w, textures[i]->h};
+
+      // TODO: capture correct area condition
+      if (mouse_action.is_highlight) {
+        /*printf("HERE: {x: %d, y: %d} --> {x: %d, y: %d}\n",
+               mouse_action.start.x, mouse_action.start.y, mouse_action.end.x,
+               mouse_action.end.y);*/
+        SDL_Color prev = {0};
+        SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                               (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
+        SDL_RenderFillRect(renderer, &textRect);
+        SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+      }
+
       SDL_RenderCopy(renderer, textures[i]->texture, NULL, &textRect);
 
       local_horizontal_offset += textures[i]->w;
@@ -186,7 +214,6 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
     return EXIT_FAILURE;
   }
 
-  int font_size = DEFAULT_FONT_SIZE;
   int vertical_offset = 0;
   int horizontal_offset = 0;
   int err = EXIT_SUCCESS;
@@ -201,7 +228,7 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
   // print_buffer = calloc(tokens_count, sizeof(char *)); // REMOVEME:
   // print_tokens(tokens, tokens_count);                  // REMOVEME:
 
-  TTF_Font *font = TTF_OpenFont(GUI_FONT, font_size);
+  TTF_Font *font = TTF_OpenFont(GUI_FONT, FONT_SIZE);
   if (font == NULL) {
     fprintf(stderr, "failed to load font: %s\n", TTF_GetError());
     SDL_Quit();
@@ -210,14 +237,16 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
 
   int textures_count = 0;
   TexturePlus **text_textures = tokens_to_textures(
-      renderer, font, tokens, tokens_count, font_size, &textures_count);
+      renderer, font, tokens, tokens_count, FONT_SIZE, &textures_count);
 
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-
   SDL_RenderClear(renderer);
 
+  MouseAction mouse_action = {0};
+  mouse_action.is_highlight = false;
+
   err = gui_print(renderer, text_textures, textures_count, vertical_offset,
-                  horizontal_offset);
+                  horizontal_offset, mouse_action);
   if (err != EXIT_SUCCESS) {
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
@@ -230,6 +259,8 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
   bool keep_window_open = true;
   bool ctrl_is_pressed = false;
   bool needs_refreshing = false;
+  MousePos mouse_pos_start = {0};
+  MousePos mouse_pos_end = {0};
 
   // REMOVEME: when zooming with mouse is removed
   // int zoom_counter = 0;
@@ -283,28 +314,28 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       } else if (ctrl_is_pressed && sdl_event.type == SDL_KEYDOWN &&
                  sdl_event.key.state == SDL_PRESSED &&
                  sdl_event.key.keysym.sym == SDLK_EQUALS) {
-        font_size += 5;
+        FONT_SIZE += 5;
         // TODO: improve boundaries
         // REFACTORME:
-        if (font_size <= 5) {
-          font_size = 5;
-        } else if (font_size >= 64) {
-          font_size = 64;
+        if (FONT_SIZE <= 5) {
+          FONT_SIZE = 5;
+        } else if (FONT_SIZE >= 64) {
+          FONT_SIZE = 64;
         }
-        TTF_SetFontSize(font, font_size);
+        TTF_SetFontSize(font, FONT_SIZE);
         needs_refreshing = true;
       } else if (ctrl_is_pressed && sdl_event.type == SDL_KEYDOWN &&
                  sdl_event.key.state == SDL_PRESSED &&
                  sdl_event.key.keysym.sym == SDLK_MINUS) {
-        font_size -= 5;
+        FONT_SIZE -= 5;
         // TODO: improve boundaries
         // REFACTORME:
-        if (font_size <= 5) {
-          font_size = 5;
-        } else if (font_size >= 64) {
-          font_size = 64;
+        if (FONT_SIZE <= 5) {
+          FONT_SIZE = 5;
+        } else if (FONT_SIZE >= 64) {
+          FONT_SIZE = 64;
         }
-        TTF_SetFontSize(font, font_size);
+        TTF_SetFontSize(font, FONT_SIZE);
         needs_refreshing = true;
 
       } else if (!ctrl_is_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
@@ -313,6 +344,28 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       } else if (!ctrl_is_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                  sdl_event.wheel.x != 0) {
         horizontal_offset += HORIZONTAL_SCROLL_MULT * sdl_event.wheel.x;
+
+        // TODO: highlighting with mouse has same performance issues;
+        // probably need to skip rendering some frames due to amount of events.
+        // But will do that later.
+      } else if (!mouse_action.is_highlight &&
+                 sdl_event.type == SDL_MOUSEBUTTONDOWN &&
+                 sdl_event.button.state == SDL_PRESSED &&
+                 sdl_event.button.button == SDL_BUTTON_LEFT) {
+        mouse_action.is_highlight = true;
+        SDL_GetMouseState(&mouse_pos_start.x, &mouse_pos_start.y);
+      } else if (mouse_action.is_highlight &&
+                 sdl_event.type == SDL_MOUSEMOTION &&
+                 sdl_event.button.button == SDL_BUTTON_LEFT) {
+        SDL_GetMouseState(&mouse_pos_end.x, &mouse_pos_end.y);
+        mouse_action.is_highlight = true;
+        mouse_action.start = mouse_pos_start;
+        mouse_action.end = mouse_pos_end;
+      } else if (mouse_action.is_highlight &&
+                 sdl_event.type == SDL_MOUSEBUTTONUP &&
+                 sdl_event.button.state == SDL_RELEASED &&
+                 sdl_event.button.button == SDL_BUTTON_LEFT) {
+        mouse_action.is_highlight = false;
       }
 
       bool was_refreshed = false;
@@ -327,16 +380,16 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
         // properly
         textures_count = 0;
         text_textures = tokens_to_textures(renderer, font, tokens, tokens_count,
-                                           font_size, &textures_count);
+                                           FONT_SIZE, &textures_count);
       } else if (needs_refreshing) {
         needs_refreshing = false;
         textures_count = 0;
         text_textures = tokens_to_textures(renderer, font, tokens, tokens_count,
-                                           font_size, &textures_count);
+                                           FONT_SIZE, &textures_count);
       }
 
       err = gui_print(renderer, text_textures, textures_count, vertical_offset,
-                      horizontal_offset);
+                      horizontal_offset, mouse_action);
       if (err != EXIT_SUCCESS) {
         // free_textures(text_textures, textures_count); // TODO: handle free
         // properly
@@ -344,7 +397,6 @@ int gui_loop(const char *prog_name, char *filename, const char **keywords,
       }
 
       SDL_RenderPresent(renderer);
-      SDL_UpdateWindowSurface(window);
     }
 
     Uint32 end = SDL_GetTicks();
