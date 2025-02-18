@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 
+#include "comments.h"
 #include "keywords.h"
 
 enum TOKEN_TYPE {
@@ -29,13 +30,6 @@ typedef struct {
   char *v;
   int vlen;
 } Token;
-
-typedef struct {
-  char *begin;
-  int begin_len;
-  char *end;
-  int end_len;
-} Comment;
 
 typedef struct {
   const char **code_keywords;

@@ -11,6 +11,8 @@ Tool to put (colored) text on the screen.
 ## Roadmap
 
 - [x] tokenizing file
+	- [x] based on extension
+		- [ ] able to override the style
 	- [x] words/strings/numbers/tabs/spaces/newlines
 	- [x] comments
 	- [x] comment keywords
@@ -36,7 +38,7 @@ Tool to put (colored) text on the screen.
 		- [ ] html (`.html`, `.md`)
 		- [ ] line and block comments per language
 	- [ ] copy-paste highlighted text
-	- [ ] UTF handling
+- [ ] UTF handling
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`

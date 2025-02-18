@@ -8,6 +8,24 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "utils.h"
+
+// TODO: other platforms
+bool file_exists(char *filename) { return access(filename, F_OK) == 0; }
+
+// allocs memory
+char *file_ext(char *filename) {
+  char *filename_dup = strdup(filename); // allocs memory
+  const char *dot = strrchr(filename_dup, '.');
+  int filename_len = strlen(filename);
+  char *ext = calloc(filename_len + 1, sizeof(char));
+  if (dot != NULL && dot != filename_dup) {
+    memcpy(ext, dot + 1, min(filename_len, strlen(dot + 1)));
+  }
+  free(filename_dup); // free strdup
+  return ext;
+}
+
 long file_size(char *filename) {
   FILE *fptr = fopen(filename, "r");
   fseek(fptr, 0, SEEK_END);

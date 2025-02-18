@@ -3,11 +3,11 @@
 #include <string.h>
 
 #include "../file_contents.h"
-#include "../utils.h"
 
 #ifndef TESTING
 #define TESTING
 #endif // TESTING
+#include "../comments.h"
 #include "../tokens.h"
 
 const int expected_nr_of_args = 2;
@@ -26,21 +26,12 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // TODO: other platforms
-  if (access(filename, F_OK) != 0) {
+  if (!file_exists(filename)) {
     fprintf(stderr, "specified file '%s' doesn't exist\n", filename);
     return 1;
   }
 
-  char ext[32] = {0};
-  if (*ext == 0) {
-    char *filename_dup = strdup(filename); // allocs memory
-    const char *dot = strrchr(filename_dup, '.');
-    if (dot != NULL && dot != filename_dup) {
-      memcpy(ext, dot + 1, min(sizeof(ext), strlen(dot + 1)));
-    }
-    free(filename_dup); // free strdup
-  }
+  char *ext = file_ext(filename);
 
   Comment *line_comment = NULL;
   Comment *block_comment = NULL;
@@ -49,36 +40,23 @@ int main(int argc, char **argv) {
 
   if (strcmp(ext, "c") == 0 || strcmp(ext, "cpp") == 0 ||
       strcmp(ext, "h") == 0) {
-    line_comment = calloc(1, sizeof(Comment));
-    line_comment->begin = "//";
-    line_comment->begin_len = strlen("//");
-    line_comment->end = "\n";
-    line_comment->end_len = strlen("\n");
-    //
-    block_comment = calloc(1, sizeof(Comment));
-    block_comment->begin = "/*";
-    block_comment->begin_len = strlen("/*");
-    block_comment->end = "*/";
-    block_comment->end_len = strlen("*/");
-    //
+    line_comment = c_style_line_comment();
+    block_comment = c_style_block_comment();
     code_keywords = (char **)c_keywords;
     code_keywords_count = C_KEYWORD_COUNT;
 
+  } else if (strcmp(ext, "go") == 0) {
+    line_comment = c_style_line_comment();
+    block_comment = c_style_block_comment();
+    // TODO: go keywords
+
   } else if (strcmp(ext, "py") == 0) {
-    line_comment = calloc(1, sizeof(Comment));
-    line_comment->begin = "#";
-    line_comment->begin_len = strlen("#");
-    line_comment->end = "\n";
-    line_comment->end_len = strlen("\n");
+    line_comment = py_style_line_comment();
     //
     // TODO: python keywords
 
   } else if (strcmp(ext, "html") == 0 || strcmp(ext, "md") == 0) {
-    block_comment = calloc(1, sizeof(Comment));
-    block_comment->begin = "<!--";
-    block_comment->begin_len = strlen("<!--");
-    block_comment->end = "-->";
-    block_comment->end_len = strlen("-->");
+    block_comment = html_style_block_comment();
   }
 
   int contents_len = 0;
@@ -100,12 +78,11 @@ int main(int argc, char **argv) {
     free(print_buffer);
   }
 
-  if (line_comment != NULL) {
-    free(line_comment);
+  if (ext != NULL) {
+    free(ext);
   }
-  if (block_comment != NULL) {
-    free(block_comment);
-  }
+  free_comment(line_comment);
+  free_comment(block_comment);
   if (tokenizer_config != NULL) {
     free(tokenizer_config);
   }
