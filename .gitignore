@@ -1,0 +1,4 @@
+explore
+*.out
+bin
+tests/out

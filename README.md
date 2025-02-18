@@ -10,8 +10,15 @@ Tool to put (colored) text on the screen.
 
 ## Roadmap
 
-- [ ] tokenizing file
-	- [ ] golden file testing
+- [x] tokenizing file
+	- [x] words/strings/numbers/tabs/spaces/newlines
+	- [x] comments
+	- [x] comment keywords
+	- [ ] code keywords
+		- [x] c/cpp/h
+		- [ ] golang
+		- [ ] python
+	- [x] golden file testing
 - [ ] TUI - print text to terminal
 	- intermediate step, serves as backup to GUI
 - [ ] GUI with SDL2
@@ -31,9 +38,11 @@ Tool to put (colored) text on the screen.
 	- [ ] copy-paste highlighted text
 	- [ ] UTF handling
 - [ ] building
-	- `make` vs something inspired by [nobuild](https://github.com/tsoding/nob.h)?
+	- [x] `make
+	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
 - [ ] placeholder
 - [ ] proper readme
+- [ ] make it work on other platforms than linux (grep ifdef OSX)
 
 ## Author
 
