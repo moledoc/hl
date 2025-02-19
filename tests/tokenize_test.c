@@ -81,9 +81,5 @@ int main(int argc, char **argv) {
   if (ext != NULL) {
     free(ext);
   }
-  free_comment(line_comment);
-  free_comment(block_comment);
-  if (tokenizer_config != NULL) {
-    free(tokenizer_config);
-  }
+  free_tokenizer_config(tokenizer_config);
 }

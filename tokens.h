@@ -39,6 +39,26 @@ typedef struct {
   const bool color_comment_keywords;
 } TokenizerConfig;
 
+TokenizerConfig DEFAULT_TOKENIZER_CONFIG = {
+    .code_keywords = (const char **)default_keywords,
+    .code_keywords_count = DEFAULT_KEYWORDS_COUNT,
+    .line_comment = (const Comment *)NULL,
+    .block_comment = (const Comment *)NULL,
+};
+
+void free_tokenizer_config(TokenizerConfig *tokenizer_config) {
+  if (tokenizer_config == NULL) {
+    return;
+  }
+  if (tokenizer_config->line_comment != NULL) {
+    free_comment((Comment *)tokenizer_config->line_comment);
+  }
+  if (tokenizer_config->block_comment != NULL) {
+    free_comment((Comment *)tokenizer_config->block_comment);
+  }
+  free(tokenizer_config);
+}
+
 // NOTE: only handles decimals that use '.' as the separator
 bool _is_number(const char *s) {
   char *s_cpy = (char *)s;
