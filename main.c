@@ -3,12 +3,11 @@
 #include <string.h>
 
 #include "comments.h"
+#include "consts.h"
 #include "file_contents.h"
+#include "gui.h"
 #include "tokens.h"
 #include "tui.h"
-
-const char *VERSION = "v0.0.1";
-const char *PROG_NAME = "hl"; // NOTE: change this, if project name changes
 
 void help() {
   printf("NAME\n\t%s - put (colored) text to screen\n", PROG_NAME);
@@ -104,7 +103,7 @@ int main(int argc, char **argv) {
 
   // TODO: gui_loop
   int ret = 0;
-  ret = tui_loop(filename, tokenizer_config);
+  ret = gui_loop(filename, tokenizer_config);
 
   if (ext != NULL) {
     free(ext);

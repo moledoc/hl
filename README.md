@@ -26,22 +26,32 @@ Tool to put (colored) text on the screen.
 - [x] TUI - print text to terminal
 	- intermediate step, serves as backup to GUI
 - [ ] GUI with SDL2
-	- [ ] non-colored text
+	- [x] non-colored text
+	- [ ] horizontal/vertical scrolling
 	- [ ] font increase/decrease
 		- [ ] ctrl+plus(or ctrl+equal for convenience)/ctrl+minus
 		- [ ] ctrl+mouse-wheel
-	- [ ] horizontal/vertical scrolling
+	- [ ] keyword based highlighting in GUI
 	- [ ] bounded horizontal/vertical scrolling
 	- [ ] highlighting text with mouse
-	- [ ] keyword based highlighting in GUI
 	- [ ] copy-paste highlighted text
 	- [ ] UTF handling
+	- [ ] able to specify font or change it on the fly
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
+- [ ] commandline arguments to toggle different functionality; eg tui vs gui mode, overriding comment/code style, etc
 - [ ] placeholder
 - [ ] proper readme
 - [ ] make it work on other platforms than linux (grep ifdef OSX)
+
+## Some Resources
+
+- http://thenumb.at/cpp-course/sdl2/07/07.html
+- http://thenumb.at/cpp-course/sdl2/08/08.html
+- https://dev.to/deusinmachina/sdl-tutorial-in-c-part-2-displaying-text-o55
+- https://dev.to/noah11012/using-sdl2-opening-a-window-79c
+
 
 ## Author
 
