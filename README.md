@@ -18,7 +18,7 @@ Tool to put (colored) text on the screen.
 	- [x] comment keywords
 	- [ ] code keywords
 		- [x] c/cpp/h
-		- [ ] golang
+		- [x] golang
 		- [ ] python
 		- [ ] html
 		- [x] markdown
