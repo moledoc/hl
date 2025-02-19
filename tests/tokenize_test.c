@@ -55,7 +55,12 @@ int main(int argc, char **argv) {
     //
     // TODO: python keywords
 
-  } else if (strcmp(ext, "html") == 0 || strcmp(ext, "md") == 0) {
+  } else if (strcmp(ext, "md") == 0) {
+    block_comment = html_style_block_comment();
+    code_keywords = (char **)md_keywords;
+    code_keywords_count = MD_KEYWORDS_COUNT;
+
+  } else if (strcmp(ext, "html") == 0) {
     block_comment = html_style_block_comment();
   }
 

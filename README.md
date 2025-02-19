@@ -20,6 +20,8 @@ Tool to put (colored) text on the screen.
 		- [x] c/cpp/h
 		- [ ] golang
 		- [ ] python
+		- [ ] html
+		- [x] markdown
 	- [x] golden file testing
 - [x] TUI - print text to terminal
 	- intermediate step, serves as backup to GUI

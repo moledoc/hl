@@ -125,3 +125,18 @@ const char *c_keywords[C_KEYWORDS_COUNT] = {"alignas",
                                             "void",
                                             "volatile",
                                             "while"};
+
+enum MD_KEYWORD {
+  MD_HEADING,
+  MD_BOLD_ITALIC,
+  MD_BLOCKQUOTE,
+  MD_UNORDERED_LIST,
+  MD_CODE,
+  MD_HORIZONTAL_RULE,
+  MD_STRIKETHROUGH,
+  MD_KEYWORDS_COUNT
+};
+
+const char *md_keywords[MD_KEYWORDS_COUNT] = {
+    "#", "*", ">", "-", "`", "---", "~",
+};
