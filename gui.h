@@ -190,7 +190,8 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                   (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
       TTF_SetFontSize(font, FONT_SIZE);
       *needs_refreshing = true;
-    } else if (ctrl_pressed && sdl_event.type == SDL_KEYDOWN &&
+    } else if (ctrl_pressed && !shift_pressed &&
+               sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_EQUALS ||
                 sdl_event.key.keysym.sym == SDLK_MINUS)) {
@@ -198,6 +199,12 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                    5 * (sdl_event.key.keysym.sym == SDLK_MINUS);
       FONT_SIZE = (5 <= FONT_SIZE && FONT_SIZE <= 64) * FONT_SIZE +
                   (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
+      TTF_SetFontSize(font, FONT_SIZE);
+      *needs_refreshing = true;
+    } else if (ctrl_pressed && shift_pressed && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_EQUALS) {
+      FONT_SIZE = DEFAULT_FONT_SIZE;
       TTF_SetFontSize(font, FONT_SIZE);
       *needs_refreshing = true;
     }

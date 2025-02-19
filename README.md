@@ -33,7 +33,7 @@ Tool to put (colored) text on the screen.
 	- [x] font increase/decrease
 		- [x] ctrl+plus(or ctrl+equal for convenience)/ctrl+minus
 		- [x] ctrl+mouse-wheel
-		- [ ] reset to default
+		- [x] reset to default
 	- [ ] keyword based highlighting in GUI
 	- [ ] bounded horizontal/vertical scrolling
 	- [ ] highlighting text with mouse
