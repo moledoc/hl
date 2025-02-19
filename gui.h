@@ -118,6 +118,36 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   return EXIT_SUCCESS;
 }
 
+int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
+                      Texture **text_textures, int textures_count,
+                      Scroll *scroll, bool *keep_window_open) {
+
+  int event_count = 0;
+  int err = 0;
+
+  while (SDL_PollEvent(&sdl_event) > 0) {
+    event_count += 1;
+
+    SDL_RenderClear(renderer);
+
+    if (sdl_event.type == SDL_QUIT || sdl_event.type == SDL_KEYDOWN &&
+                                          sdl_event.key.state == SDL_PRESSED &&
+                                          sdl_event.key.keysym.sym == SDLK_q) {
+      *keep_window_open = false;
+      return event_count;
+    }
+
+    SDL_RenderClear(renderer);
+    err = cpy_to_renderer(renderer, text_textures, textures_count, scroll);
+    if (err != EXIT_SUCCESS) {
+      *keep_window_open = false;
+      return event_count;
+    }
+    SDL_RenderPresent(renderer);
+  }
+  return event_count;
+}
+
 int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -153,6 +183,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   int contents_len = 0;
   char *contents = read_contents(filename, &contents_len);
   time_t last_modified = get_last_modified(filename);
+
   int tokens_count = 0;
   Token **tokens =
       tokenize(contents, contents_len, tokenizer_config, &tokens_count);
@@ -185,47 +216,52 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   SDL_RenderPresent(renderer);
 
   bool keep_window_open = true;
-  Uint32 outer_start = SDL_GetTicks();
-  Uint32 outer_end = SDL_GetTicks();
-  Uint32 inner_start = SDL_GetTicks();
-  Uint32 inner_end = SDL_GetTicks();
+  bool was_refreshed = false;
+
+  Uint32 start = SDL_GetTicks();
+  Uint32 end = SDL_GetTicks();
   float elapsed = 0;
 
+  int handled_event_count = 0;
+
   while (keep_window_open) {
-    outer_start = SDL_GetTicks();
+
+    start = SDL_GetTicks();
 
     SDL_Event sdl_event;
-    while (SDL_PollEvent(&sdl_event) > 0) {
-      inner_start = SDL_GetTicks();
-      SDL_RenderClear(renderer);
-
-      if (sdl_event.type == SDL_QUIT ||
-          sdl_event.type == SDL_KEYDOWN && sdl_event.key.state == SDL_PRESSED &&
-              sdl_event.key.keysym.sym == SDLK_q) {
-        keep_window_open = false;
-      }
-
-      inner_end = SDL_GetTicks();
-      float inner_elapsed = inner_end - inner_start;
-      if (inner_elapsed > FRAME_DELAY) {
-        continue;
-      }
-
-      SDL_RenderClear(renderer);
-      err = cpy_to_renderer(renderer, text_textures, textures_count, scroll);
-      if (err != EXIT_SUCCESS) {
-        keep_window_open = false;
-      }
-      SDL_RenderPresent(renderer);
+    handled_event_count =
+        handle_sdl_events(sdl_event, renderer, text_textures, textures_count,
+                          scroll, &keep_window_open);
+    if (!keep_window_open) {
+      break;
     }
 
-    outer_end = SDL_GetTicks();
-    elapsed = outer_end - inner_start;
-    if (elapsed > FRAME_DELAY) {
-      continue;
+    { // NOTE: check if file content was updated
+      contents = check_contents(filename, contents, &contents_len,
+                                &last_modified, &was_refreshed);
+      if (was_refreshed) {
+        was_refreshed = false;
+        tokens_count = 0;
+        textures_count = 0;
+
+        tokens =
+            tokenize(contents, contents_len, tokenizer_config, &tokens_count);
+        text_textures = tokens_to_textures(renderer, font, FONT_SIZE, tokens,
+                                           tokens_count, &textures_count);
+
+        SDL_RenderClear(renderer);
+        err = cpy_to_renderer(renderer, text_textures, textures_count, scroll);
+        if (err != EXIT_SUCCESS) {
+          break;
+        }
+      }
     }
 
-    SDL_Delay(FRAME_DELAY - elapsed);
+    end = SDL_GetTicks();
+    elapsed = end - start;
+    if (elapsed <= FRAME_DELAY) {
+      SDL_Delay(FRAME_DELAY - elapsed);
+    }
     SDL_RenderPresent(renderer); // NOTE: always present current renderer
   }
 

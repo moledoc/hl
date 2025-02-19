@@ -25,8 +25,10 @@ Tool to put (colored) text on the screen.
 	- [x] golden file testing
 - [x] TUI - print text to terminal
 	- intermediate step, serves as backup to GUI
+	- [x] auto-update code when it's modified
 - [ ] GUI with SDL2
 	- [x] non-colored text
+	- [x] auto-update code when it's modified
 	- [ ] horizontal/vertical scrolling
 	- [ ] font increase/decrease
 		- [ ] ctrl+plus(or ctrl+equal for convenience)/ctrl+minus

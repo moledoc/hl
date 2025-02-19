@@ -1,6 +1,5 @@
 #pragma once
 
-#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,7 +40,10 @@ char *read_contents(char *filename, int *content_len) {
   char *contents = calloc(contents_length + 1, sizeof(char));
   size_t read_bytes = fread(contents, sizeof(char), contents_length, fptr);
   fclose(fptr);
-  assert(read_bytes == contents_length);
+  if (read_bytes != contents_length) {
+    fprintf(stdout, "[WARNING]: contents_length is %ld, but read %ld\n",
+            contents_length, read_bytes);
+  }
   if (content_len != NULL) {
     *content_len = contents_length;
   }
@@ -80,8 +82,10 @@ char *update_contents(char *filename, char *contents, int *contents_len) {
 char *check_contents(char *filename, char *contents, int *contents_len,
                      time_t *last_modified, bool *was_refreshed) {
 
-  assert(last_modified != NULL);
-  assert(was_refreshed != NULL);
+  if (last_modified == NULL || was_refreshed == NULL) {
+    fprintf(stdout, "[WARNING]: 'last_modified' or 'was_refreshed' not set\n");
+    return contents;
+  }
 
   if (_is_updated(filename, last_modified)) {
     contents = update_contents(filename, contents, contents_len);
