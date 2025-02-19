@@ -212,12 +212,20 @@ Token **tokenize(char *contents, int contents_length,
       // { WORD
     } else {
       char c;
-      // NOTE: quotes are added so that comments are tokenized correctly
-      // MAYBE: not sure if this causes some issues, so keep an eye out
+
+      // NOTE: single-quote is added so words with apostrophies are tokenized
+      // correctly (in comment and otherwise).
+
+      // NOTE: having double-quote here makes f-strings in python tricky, so
+      // currently not included (might cause weird behavior in the future, but
+      // currently tests pass).
+
+      // MAYBE: not sure if this causes some issues, so keep an eye out and note
+      // them down when encountered
       while (offset < contents_length && (c = contents[offset]) &&
              ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' ||
               '0' <= c && c <= '9' || c == '+' || c == '-' || c == '.' ||
-              c == '\'' || c == '"' || c == '_')) {
+              c == '\'' || c == '_')) {
         offset += 1;
       }
       // } WORD

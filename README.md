@@ -19,9 +19,9 @@ Tool to put (colored) text on the screen.
 	- [ ] code keywords
 		- [x] c/cpp/h
 		- [x] golang
-		- [ ] python
-		- [ ] html
+		- [x] python
 		- [x] markdown
+		- [ ] others when needed
 	- [x] golden file testing
 - [x] TUI - print text to terminal
 	- intermediate step, serves as backup to GUI
@@ -34,13 +34,8 @@ Tool to put (colored) text on the screen.
 	- [ ] bounded horizontal/vertical scrolling
 	- [ ] highlighting text with mouse
 	- [ ] keyword based highlighting in GUI
-		- [ ] C/C++ (`.c`, `.h`, `cpp`, ...)
-		- [ ] go (`.go`)
-		- [ ] python (`.py`)
-		- [ ] html (`.html`, `.md`)
-		- [ ] line and block comments per language
 	- [ ] copy-paste highlighted text
-- [ ] UTF handling
+	- [ ] UTF handling
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`

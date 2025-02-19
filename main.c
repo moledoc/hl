@@ -77,8 +77,8 @@ int main(int argc, char **argv) {
 
   } else if (strcmp(ext, "py") == 0) {
     line_comment = py_style_line_comment();
-    //
-    // TODO: python keywords
+    code_keywords = (char **)py_keywords;
+    code_keywords_count = PY_KEYWORDS_COUNT;
 
   } else if (strcmp(ext, "md") == 0) {
     block_comment = html_style_block_comment();
