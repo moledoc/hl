@@ -30,9 +30,10 @@ Tool to put (colored) text on the screen.
 	- [x] non-colored text
 	- [x] auto-update code when it's modified
 	- [x] horizontal/vertical scrolling (unbounded)
-	- [ ] font increase/decrease
-		- [ ] ctrl+plus(or ctrl+equal for convenience)/ctrl+minus
-		- [ ] ctrl+mouse-wheel
+	- [x] font increase/decrease
+		- [x] ctrl+plus(or ctrl+equal for convenience)/ctrl+minus
+		- [x] ctrl+mouse-wheel
+		- [ ] reset to default
 	- [ ] keyword based highlighting in GUI
 	- [ ] bounded horizontal/vertical scrolling
 	- [ ] highlighting text with mouse

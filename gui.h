@@ -89,9 +89,22 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
 void free_textures(Texture **textures, int textures_count) {
   for (int i = 0; i < textures_count; i++) {
     if (textures[i] != NULL) {
+      SDL_DestroyTexture(textures[i]->texture);
       free(textures[i]);
     }
   }
+}
+
+// update_textures frees existing textures
+// and creates new textures from tokens
+// frees and allocs memory
+Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
+                          TTF_Font *font, int font_size, Token **tokens,
+                          int tokens_count, int *textures_count) {
+  free_textures(textures, *textures_count);
+  *textures_count = 0;
+  return tokens_to_textures(renderer, font, FONT_SIZE, tokens, tokens_count,
+                            textures_count);
 }
 
 int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
@@ -118,9 +131,14 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   return EXIT_SUCCESS;
 }
 
+// TODO: handle the state better than using global vars
+bool ctrl_pressed = false;
+bool shift_pressed = false;
+
 int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
-                      Texture **text_textures, int textures_count,
-                      Scroll *scroll, bool *keep_window_open) {
+                      TTF_Font *font, Texture **text_textures,
+                      int textures_count, Scroll *scroll,
+                      bool *keep_window_open, bool *needs_refreshing) {
 
   int event_count = 0;
   int err = 0;
@@ -135,10 +153,53 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                                           sdl_event.key.keysym.sym == SDLK_q) {
       *keep_window_open = false;
       return event_count;
-    } else if (sdl_event.type == SDL_MOUSEWHEEL && sdl_event.wheel.y != 0) {
+
+    } else if (sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               (sdl_event.key.keysym.sym == SDLK_LCTRL ||
+                sdl_event.key.keysym.sym == SDLK_RCTRL)) {
+      ctrl_pressed = true;
+    } else if (sdl_event.type == SDL_KEYUP &&
+               sdl_event.key.state == SDL_RELEASED &&
+               (sdl_event.key.keysym.sym == SDLK_LCTRL ||
+                sdl_event.key.keysym.sym == SDLK_RCTRL)) {
+      ctrl_pressed = false;
+
+    } else if (sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               (sdl_event.key.keysym.sym == SDLK_LSHIFT ||
+                sdl_event.key.keysym.sym == SDLK_RSHIFT)) {
+      shift_pressed = true;
+    } else if (sdl_event.type == SDL_KEYUP &&
+               sdl_event.key.state == SDL_RELEASED &&
+               (sdl_event.key.keysym.sym == SDLK_LSHIFT ||
+                sdl_event.key.keysym.sym == SDLK_RSHIFT)) {
+      shift_pressed = false;
+
+    } else if (!ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
+               sdl_event.wheel.y != 0) {
       scroll->vertical_offset += VERTICAL_SCROLL_MULT * sdl_event.wheel.y;
-    } else if (sdl_event.type == SDL_MOUSEWHEEL && sdl_event.wheel.x != 0) {
+    } else if (!ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
+               sdl_event.wheel.x != 0) {
       scroll->horizontal_offset += HORIZONTAL_SCROLL_MULT * sdl_event.wheel.x;
+
+    } else if (ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
+               sdl_event.wheel.y != 0) {
+      FONT_SIZE += 5 * sign(sdl_event.wheel.y);
+      FONT_SIZE = (5 <= FONT_SIZE && FONT_SIZE <= 64) * FONT_SIZE +
+                  (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
+      TTF_SetFontSize(font, FONT_SIZE);
+      *needs_refreshing = true;
+    } else if (ctrl_pressed && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               (sdl_event.key.keysym.sym == SDLK_EQUALS ||
+                sdl_event.key.keysym.sym == SDLK_MINUS)) {
+      FONT_SIZE += 5 * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
+                   5 * (sdl_event.key.keysym.sym == SDLK_MINUS);
+      FONT_SIZE = (5 <= FONT_SIZE && FONT_SIZE <= 64) * FONT_SIZE +
+                  (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
+      TTF_SetFontSize(font, FONT_SIZE);
+      *needs_refreshing = true;
     }
 
     SDL_RenderClear(renderer);
@@ -221,6 +282,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   bool keep_window_open = true;
   bool was_refreshed = false;
+  bool needs_refreshing = false;
 
   Uint32 start = SDL_GetTicks();
   Uint32 end = SDL_GetTicks();
@@ -233,31 +295,39 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     start = SDL_GetTicks();
 
     SDL_Event sdl_event;
-    handled_event_count =
-        handle_sdl_events(sdl_event, renderer, text_textures, textures_count,
-                          scroll, &keep_window_open);
+    handled_event_count = handle_sdl_events(
+        sdl_event, renderer, font, text_textures, textures_count, scroll,
+        &keep_window_open, &needs_refreshing);
     if (!keep_window_open) {
       break;
     }
 
-    { // NOTE: check if file content was updated
-      contents = check_contents(filename, contents, &contents_len,
-                                &last_modified, &was_refreshed);
-      if (was_refreshed) {
-        was_refreshed = false;
-        tokens_count = 0;
-        textures_count = 0;
+    contents = check_contents(filename, contents, &contents_len, &last_modified,
+                              &was_refreshed);
+    if (was_refreshed) {
+      was_refreshed = false;
 
-        tokens =
-            tokenize(contents, contents_len, tokenizer_config, &tokens_count);
-        text_textures = tokens_to_textures(renderer, font, FONT_SIZE, tokens,
-                                           tokens_count, &textures_count);
+      tokens = update_tokens(tokens, contents, contents_len, tokenizer_config,
+                             &tokens_count);
 
-        SDL_RenderClear(renderer);
-        err = cpy_to_renderer(renderer, text_textures, textures_count, scroll);
-        if (err != EXIT_SUCCESS) {
-          break;
-        }
+      text_textures = update_textures(text_textures, renderer, font, FONT_SIZE,
+                                      tokens, tokens_count, &textures_count);
+
+      SDL_RenderClear(renderer);
+      err = cpy_to_renderer(renderer, text_textures, textures_count, scroll);
+      if (err != EXIT_SUCCESS) {
+        break;
+      }
+    } else if (needs_refreshing) {
+      needs_refreshing = false;
+
+      text_textures = update_textures(text_textures, renderer, font, FONT_SIZE,
+                                      tokens, tokens_count, &textures_count);
+
+      SDL_RenderClear(renderer);
+      err = cpy_to_renderer(renderer, text_textures, textures_count, scroll);
+      if (err != EXIT_SUCCESS) {
+        break;
       }
     }
 
@@ -273,6 +343,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   SDL_DestroyRenderer(renderer);
   SDL_Quit();
 
+  free_textures(text_textures, textures_count);
   free_tokens(tokens, tokens_count);
   free_contents(contents);
   if (scroll != NULL) {

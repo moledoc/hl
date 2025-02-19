@@ -329,6 +329,16 @@ void free_tokens(Token **tokens, int tokens_count) {
   free(tokens);
 }
 
+// update_tokens frees existing tokens
+// and creates new tokens from content.
+// frees and allocs memory
+Token **update_tokens(Token **tokens, char *contents, int contents_length,
+                      TokenizerConfig *tokenizer_config, int *tokens_count) {
+  free_tokens(tokens, *tokens_count);
+  *tokens_count = 0;
+  return tokenize(contents, contents_length, tokenizer_config, tokens_count);
+}
+
 // {
 #ifdef TESTING
 

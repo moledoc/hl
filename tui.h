@@ -71,9 +71,8 @@ int tui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     contents = check_contents(filename, contents, &contents_len, &last_modified,
                               &was_refreshed);
     if (was_refreshed) {
-      tokens_count = 0;
-      tokens =
-          tokenize(contents, contents_len, tokenizer_config, &tokens_count);
+      tokens = update_tokens(tokens, contents, contents_len, tokenizer_config,
+                             &tokens_count);
       tui_print(tokens, tokens_count);
     }
   }
