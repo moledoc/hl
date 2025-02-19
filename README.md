@@ -21,7 +21,7 @@ Tool to put (colored) text on the screen.
 		- [ ] golang
 		- [ ] python
 	- [x] golden file testing
-- [ ] TUI - print text to terminal
+- [x] TUI - print text to terminal
 	- intermediate step, serves as backup to GUI
 - [ ] GUI with SDL2
 	- [ ] non-colored text
