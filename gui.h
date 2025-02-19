@@ -135,6 +135,10 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                                           sdl_event.key.keysym.sym == SDLK_q) {
       *keep_window_open = false;
       return event_count;
+    } else if (sdl_event.type == SDL_MOUSEWHEEL && sdl_event.wheel.y != 0) {
+      scroll->vertical_offset += VERTICAL_SCROLL_MULT * sdl_event.wheel.y;
+    } else if (sdl_event.type == SDL_MOUSEWHEEL && sdl_event.wheel.x != 0) {
+      scroll->horizontal_offset += HORIZONTAL_SCROLL_MULT * sdl_event.wheel.x;
     }
 
     SDL_RenderClear(renderer);

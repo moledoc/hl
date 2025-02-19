@@ -29,7 +29,7 @@ Tool to put (colored) text on the screen.
 - [ ] GUI with SDL2
 	- [x] non-colored text
 	- [x] auto-update code when it's modified
-	- [ ] horizontal/vertical scrolling
+	- [x] horizontal/vertical scrolling (unbounded)
 	- [ ] font increase/decrease
 		- [ ] ctrl+plus(or ctrl+equal for convenience)/ctrl+minus
 		- [ ] ctrl+mouse-wheel
