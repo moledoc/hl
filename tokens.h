@@ -87,10 +87,11 @@ bool _strcmp_window(const char *s1, const char *s2, int window_size) {
 Token **tokenize(char *contents, int contents_length,
                  TokenizerConfig *tokenizer_config, int *tokens_count) {
 
+  // TODO: make better decision about this
   Comment *line_comment = NULL;
   Comment *block_comment = NULL;
   char **code_keywords = (char **)default_keywords;
-  int code_keywords_count = DEFAULT_KEYWORD_COUNT;
+  int code_keywords_count = DEFAULT_KEYWORDS_COUNT;
   bool color_comment_keywords = false;
   if (tokenizer_config != NULL) {
     line_comment = (Comment *)tokenizer_config->line_comment;
@@ -242,7 +243,7 @@ Token **tokenize(char *contents, int contents_length,
     {
       if (color_comment_keywords && token->t == TOKEN_COMMENT ||
           token->t == TOKEN_WORD) {
-        for (int i = 0; i < COMMENT_KEYWORD_COUNT; i += 1) {
+        for (int i = 0; i < COMMENT_KEYWORDS_COUNT; i += 1) {
           if (strcmp(token->v, comment_keywords[i]) == 0) {
             token->t = TOKEN_COMMENT_KEYWORD;
             break;

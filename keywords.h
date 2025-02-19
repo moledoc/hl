@@ -1,8 +1,8 @@
 #pragma once
 
-enum DEFAULT_KEYWORD { DEFAULT_KEYWORD_COUNT = 0 };
+enum DEFAULT_KEYWORD { DEFAULT_KEYWORDS_COUNT = 0 };
 
-const char *default_keywords[DEFAULT_KEYWORD_COUNT] = {};
+const char *default_keywords[DEFAULT_KEYWORDS_COUNT] = {};
 
 enum COMMENT_KEYWORD {
   COMMENT_TODO = 0,
@@ -14,10 +14,10 @@ enum COMMENT_KEYWORD {
   COMMENT_MAYBE,
   COMMENT_EXAMPLE,
   COMMENT_REFACTOR,
-  COMMENT_KEYWORD_COUNT
+  COMMENT_KEYWORDS_COUNT
 };
 
-const char *comment_keywords[COMMENT_KEYWORD_COUNT] = {
+const char *comment_keywords[COMMENT_KEYWORDS_COUNT] = {
     "TODO",     "NOTE",  "FIXME",   "REVIEWME",  "HACK",
     "REMOVEME", "MAYBE", "EXAMPLE", "REFACTORME"};
 
@@ -72,56 +72,56 @@ enum C_KEYWORD {
   C_VOID,
   C_VOLATILE,
   C_WHILE,
-  C_KEYWORD_COUNT
+  C_KEYWORDS_COUNT
 };
 
-const char *c_keywords[C_KEYWORD_COUNT] = {"alignas",
-                                           "alignof",
-                                           "assert",
-                                           "auto",
-                                           "bool",
-                                           "break",
-                                           "case",
-                                           "char",
-                                           "const",
-                                           "constexpr",
-                                           "continue",
-                                           "default",
-                                           "define",
-                                           "do",
-                                           "double",
-                                           "else",
-                                           "enum",
-                                           "extern",
-                                           "false",
-                                           "float",
-                                           "for",
-                                           "goto",
-                                           "if",
-                                           "include",
-                                           "inline",
-                                           "int",
-                                           "long",
-                                           "NULL",
-                                           "nullptr",
-                                           "pragma",
-                                           "register",
-                                           "restrict",
-                                           "return",
-                                           "short",
-                                           "signed",
-                                           "sizeof",
-                                           "static",
-                                           "static_assert",
-                                           "struct",
-                                           "switch",
-                                           "thread_local",
-                                           "true",
-                                           "typedef",
-                                           "typeof",
-                                           "typeof_unqual",
-                                           "union",
-                                           "unsigned",
-                                           "void",
-                                           "volatile",
-                                           "while"};
+const char *c_keywords[C_KEYWORDS_COUNT] = {"alignas",
+                                            "alignof",
+                                            "assert",
+                                            "auto",
+                                            "bool",
+                                            "break",
+                                            "case",
+                                            "char",
+                                            "const",
+                                            "constexpr",
+                                            "continue",
+                                            "default",
+                                            "define",
+                                            "do",
+                                            "double",
+                                            "else",
+                                            "enum",
+                                            "extern",
+                                            "false",
+                                            "float",
+                                            "for",
+                                            "goto",
+                                            "if",
+                                            "include",
+                                            "inline",
+                                            "int",
+                                            "long",
+                                            "NULL",
+                                            "nullptr",
+                                            "pragma",
+                                            "register",
+                                            "restrict",
+                                            "return",
+                                            "short",
+                                            "signed",
+                                            "sizeof",
+                                            "static",
+                                            "static_assert",
+                                            "struct",
+                                            "switch",
+                                            "thread_local",
+                                            "true",
+                                            "typedef",
+                                            "typeof",
+                                            "typeof_unqual",
+                                            "union",
+                                            "unsigned",
+                                            "void",
+                                            "volatile",
+                                            "while"};

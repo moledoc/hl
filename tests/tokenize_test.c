@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     line_comment = c_style_line_comment();
     block_comment = c_style_block_comment();
     code_keywords = (char **)c_keywords;
-    code_keywords_count = C_KEYWORD_COUNT;
+    code_keywords_count = C_KEYWORDS_COUNT;
 
   } else if (strcmp(ext, "go") == 0) {
     line_comment = c_style_line_comment();
