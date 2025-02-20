@@ -130,13 +130,16 @@ Token **tokenize(char *contents, int contents_length,
 
   bool is_line_comment = false;
   bool is_block_comment = false;
+  bool is_string = false;
 
   while (offset < contents_length) {
 
     Token *token = calloc(1, sizeof(Token));
     token->t = TOKEN_WORD;
 
-    // { STRING
+    // TODO: handle STRING same way as COMMENTs (gui multiline string doesn't
+    // handle newline chars correctly atm)
+    // STRING start
     if (!is_line_comment && !is_block_comment && contents[offset] == '"' ||
         contents[offset] == '\'') {
       char closing_quote = contents[offset];
@@ -153,9 +156,9 @@ Token **tokenize(char *contents, int contents_length,
         offset += 1;
       }
       offset += 1; // NOTE: account for closing quote
-      // } STRING
+      // STRING end
 
-      // { LINE_COMMENT
+      // LINE_COMMENT start
     } else if (line_comment != NULL &&
                offset + line_comment->begin_len < contents_length &&
                _strcmp_window((const char *)(contents + offset),
@@ -170,9 +173,9 @@ Token **tokenize(char *contents, int contents_length,
                               line_comment->end_len) == 1) {
       is_line_comment = false;
       offset += line_comment->end_len;
-      // } LINE_COMMENT
+      // LINE_COMMENT end
 
-      // { BLOCK_COMMENT
+      // BLOCK_COMMENT start
     } else if (block_comment != NULL &&
                offset + block_comment->begin_len < contents_length &&
                _strcmp_window((const char *)(contents + offset),
@@ -189,27 +192,27 @@ Token **tokenize(char *contents, int contents_length,
       offset += block_comment->end_len;
       token->t = TOKEN_COMMENT; // NOTE: here is fine to add, since block
                                 // comment doesn't end with newline
-      // } BLOCK_COMMENT
+      // BLOCK_COMMENT end
 
-      // { SPACES
+      // SPACES start
     } else if (offset < contents_length && contents[offset] == ' ') {
       char c;
       while (offset < contents_length && (c = contents[offset]) && c == ' ') {
         offset += 1;
       }
       token->t = TOKEN_SPACES;
-      // } SPACES
+      // SPACES end
 
-      // { TABS
+      // TABS start
     } else if (offset < contents_length && contents[offset] == '\t') {
       char c;
       while (offset < contents_length && (c = contents[offset]) && c == '\t') {
         offset += 1;
       }
       token->t = TOKEN_TABS;
-      // } TABS
+      // TABS end
 
-      // { WORD
+      // WORD start
     } else {
       char c;
 
@@ -228,7 +231,7 @@ Token **tokenize(char *contents, int contents_length,
               c == '\'' || c == '_')) {
         offset += 1;
       }
-      // } WORD
+      // WORD end
     }
 
     if (offset >= contents_length) {

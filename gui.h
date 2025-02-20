@@ -164,12 +164,15 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
 
     SDL_RenderClear(renderer);
 
+    // Q(UIT) START
     if (sdl_event.type == SDL_QUIT || sdl_event.type == SDL_KEYDOWN &&
                                           sdl_event.key.state == SDL_PRESSED &&
                                           sdl_event.key.keysym.sym == SDLK_q) {
       *keep_window_open = false;
       return event_count;
+      // Q(UIT) END
 
+      // CTRL START
     } else if (sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_LCTRL ||
@@ -180,7 +183,9 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                (sdl_event.key.keysym.sym == SDLK_LCTRL ||
                 sdl_event.key.keysym.sym == SDLK_RCTRL)) {
       ctrl_pressed = false;
+      // CTRL END
 
+      // SHIFT START
     } else if (sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_LSHIFT ||
@@ -191,14 +196,18 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                (sdl_event.key.keysym.sym == SDLK_LSHIFT ||
                 sdl_event.key.keysym.sym == SDLK_RSHIFT)) {
       shift_pressed = false;
+      // SHIFT END
 
+      // SCROLL VERTICAL/HORIZONTAL START
     } else if (!ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.y != 0) {
       scroll->vertical_offset += VERTICAL_SCROLL_MULT * sdl_event.wheel.y;
     } else if (!ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.x != 0) {
       scroll->horizontal_offset += HORIZONTAL_SCROLL_MULT * sdl_event.wheel.x;
+      // SCROLL VERTICAL/HORIZONTAL END
 
+      // FONT RESIZE WITH MOUSEWHEEL START
     } else if (ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.y != 0) {
       FONT_SIZE += 5 * sign(sdl_event.wheel.y);
@@ -206,6 +215,9 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                   (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
       TTF_SetFontSize(font, FONT_SIZE);
       *needs_refreshing = true;
+      // FONT RESIZE WITH MOUSEWHEEL END
+
+      // FONT RESIZE +/- START
     } else if (ctrl_pressed && !shift_pressed &&
                sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
@@ -217,12 +229,16 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                   (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
       TTF_SetFontSize(font, FONT_SIZE);
       *needs_refreshing = true;
+      // FONT RESIZE +/- END
+
+      // FONT RESIZE TO DEFAULT START
     } else if (ctrl_pressed && shift_pressed && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_EQUALS) {
       FONT_SIZE = DEFAULT_FONT_SIZE;
       TTF_SetFontSize(font, FONT_SIZE);
       *needs_refreshing = true;
+      // FONT RESIZE TO DEFAULT END
     }
 
     SDL_RenderClear(renderer);

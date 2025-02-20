@@ -16,7 +16,7 @@ Tool to put (colored) text on the screen.
 	- [x] words/strings/numbers/tabs/spaces/newlines
 	- [x] comments
 	- [x] comment keywords
-	- [ ] code keywords
+	- [x] code keywords
 		- [x] c/cpp/h
 		- [x] golang
 		- [x] python
