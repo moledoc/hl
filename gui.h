@@ -27,7 +27,7 @@
 
 #define FRAME_DELAY 33 // in milliseconds; ~30FPS
 
-int FONT_SIZE = DEFAULT_FONT_SIZE;
+int FONT_SIZE = DEFAULT_FONT_SIZE; // MAYBE: move to state
 
 // TODO: improve colors
 const SDL_Color BLACK = {0, 0, 0, 255};
@@ -48,7 +48,12 @@ typedef struct {
 
 typedef struct {
   int vertical_offset;
+  int vertical_lower_bound;
+  int vertical_upper_bound;
+  //
   int horizontal_offset;
+  int horizontal_lower_bound;
+  int horizontal_upper_bound;
 } Scroll;
 
 typedef struct {
@@ -140,6 +145,8 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
 
+  int max_horizontal = 0;
+
   for (int i = 0; i < textures_count; i += 1) {
 
     if (textures[i]->is_newline) {
@@ -154,7 +161,15 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
       SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
       local_horizontal_offset += textures[i]->w;
     }
+    max_horizontal = (max_horizontal >= textures[i]->w) * max_horizontal +
+                     (max_horizontal < textures[i]->w) * textures[i]->w;
   }
+
+  scroll->vertical_lower_bound = -local_vertical_offset;
+  scroll->vertical_upper_bound = 0;
+  scroll->horizontal_lower_bound = -max_horizontal;
+  scroll->horizontal_upper_bound = 0;
+
   return EXIT_SUCCESS;
 }
 
@@ -208,9 +223,29 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
     } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.y != 0) {
       scroll->vertical_offset += VERTICAL_SCROLL_MULT * sdl_event.wheel.y;
+
+      scroll->vertical_offset =
+          (scroll->vertical_lower_bound <= scroll->vertical_offset &&
+           scroll->vertical_offset <= scroll->vertical_upper_bound) *
+              scroll->vertical_offset +
+          (scroll->vertical_offset < scroll->vertical_lower_bound) *
+              scroll->vertical_lower_bound +
+          (scroll->vertical_upper_bound < scroll->vertical_offset) *
+              scroll->vertical_upper_bound;
+
     } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.x != 0) {
       scroll->horizontal_offset += HORIZONTAL_SCROLL_MULT * sdl_event.wheel.x;
+
+      scroll->horizontal_offset =
+          (scroll->horizontal_lower_bound <= scroll->horizontal_offset &&
+           scroll->horizontal_offset <= scroll->horizontal_upper_bound) *
+              scroll->horizontal_offset +
+          (scroll->horizontal_offset < scroll->horizontal_lower_bound) *
+              scroll->horizontal_lower_bound +
+          (scroll->horizontal_upper_bound < scroll->horizontal_offset) *
+              scroll->horizontal_upper_bound;
+
       // SCROLL VERTICAL/HORIZONTAL END
 
       // FONT RESIZE WITH MOUSEWHEEL START
