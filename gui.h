@@ -18,6 +18,9 @@
 
 #define GUI_FONT "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
 #define DEFAULT_FONT_SIZE 20
+#define FONT_INCREMENT 2
+#define FONT_LOWER_BOUND 8
+#define FONT_UPPER_BOUND 64
 
 #define HORIZONTAL_PADDING 10
 #define VERTICAL_PADDING 10
@@ -213,9 +216,12 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
       // FONT RESIZE WITH MOUSEWHEEL START
     } else if (state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.y != 0) {
-      FONT_SIZE += 5 * sign(sdl_event.wheel.y);
-      FONT_SIZE = (5 <= FONT_SIZE && FONT_SIZE <= 64) * FONT_SIZE +
-                  (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
+      FONT_SIZE += FONT_INCREMENT * sign(sdl_event.wheel.y);
+      FONT_SIZE =
+          (FONT_LOWER_BOUND <= FONT_SIZE && FONT_SIZE <= FONT_UPPER_BOUND) *
+              FONT_SIZE +
+          (FONT_SIZE < FONT_LOWER_BOUND) * FONT_LOWER_BOUND +
+          (FONT_UPPER_BOUND < FONT_SIZE) * FONT_UPPER_BOUND;
       TTF_SetFontSize(font, FONT_SIZE);
       state->refresh_tokens = true;
       // FONT RESIZE WITH MOUSEWHEEL END
@@ -226,12 +232,17 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_EQUALS ||
                 sdl_event.key.keysym.sym == SDLK_MINUS)) {
-      FONT_SIZE += 5 * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
-                   5 * (sdl_event.key.keysym.sym == SDLK_MINUS);
-      FONT_SIZE = (5 <= FONT_SIZE && FONT_SIZE <= 64) * FONT_SIZE +
-                  (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
+      int old_font_size = FONT_SIZE;
+      FONT_SIZE += FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
+                   FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_MINUS);
+      FONT_SIZE =
+          (FONT_LOWER_BOUND <= FONT_SIZE && FONT_SIZE <= FONT_UPPER_BOUND) *
+              FONT_SIZE +
+          (FONT_SIZE < FONT_LOWER_BOUND) * FONT_LOWER_BOUND +
+          (FONT_UPPER_BOUND < FONT_SIZE) * FONT_UPPER_BOUND;
       TTF_SetFontSize(font, FONT_SIZE);
       state->refresh_tokens = true;
+
       // FONT RESIZE +/- END
 
       // FONT RESIZE TO DEFAULT START

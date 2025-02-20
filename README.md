@@ -37,7 +37,8 @@ Tool to put (colored) text on the screen.
 	- [x] keyword based highlighting in GUI
 		- [ ] multi-line strings are not properly handling newline chars
 	- [ ] bounded horizontal/vertical scrolling
-	- [ ] when font is resized, keep same place in view
+	- [ ] ~~when font is resized, keep same place in view~~
+		- [x] smaller font increment instead
 	- [ ] highlighting text with mouse
 	- [ ] copy-paste highlighted text
 	- [ ] UTF handling
