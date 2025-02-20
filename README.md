@@ -8,7 +8,7 @@ Tool to put (colored) text on the screen.
 * Enable some highlighting in my `acme` workflow, when I need it (screensharing, visual parsing, etc).
 * Seemed like an interesting project for me to expand my knowledge and skills.
 
-## Roadmap
+## TODO:
 
 - [x] tokenizing file
 	- [x] based on extension
@@ -37,6 +37,7 @@ Tool to put (colored) text on the screen.
 	- [x] keyword based highlighting in GUI
 		- [ ] multi-line strings are not properly handling newline chars
 	- [ ] bounded horizontal/vertical scrolling
+	- [ ] when font is resized, keep same place in view
 	- [ ] highlighting text with mouse
 	- [ ] copy-paste highlighted text
 	- [ ] UTF handling
