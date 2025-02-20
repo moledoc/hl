@@ -34,7 +34,8 @@ Tool to put (colored) text on the screen.
 		- [x] ctrl+plus(or ctrl+equal for convenience)/ctrl+minus
 		- [x] ctrl+mouse-wheel
 		- [x] reset to default
-	- [ ] keyword based highlighting in GUI
+	- [x] keyword based highlighting in GUI
+		- [ ] multi-line strings are not properly handling newline chars
 	- [ ] bounded horizontal/vertical scrolling
 	- [ ] highlighting text with mouse
 	- [ ] copy-paste highlighted text

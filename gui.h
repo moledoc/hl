@@ -25,6 +25,8 @@
 #define FRAME_DELAY 33 // in milliseconds; ~30FPS
 
 int FONT_SIZE = DEFAULT_FONT_SIZE;
+
+// TODO: improve colors
 const SDL_Color BLACK = {0, 0, 0, 255};
 const SDL_Color RED = {255, 0, 0, 255};
 const SDL_Color GREEN = {0, 255, 0, 255};
@@ -55,6 +57,20 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
   SDL_Color text_color = BLACK;
 
   for (int i = 0; i < tokens_count; i += 1) {
+
+    if (tokens[i]->t == TOKEN_STRING) {
+      text_color = GREEN;
+    } else if (tokens[i]->t == TOKEN_NUMBER) {
+      text_color = MAGENTA;
+    } else if (tokens[i]->t == TOKEN_CODE_KEYWORD) {
+      text_color = BLUE;
+    } else if (tokens[i]->t == TOKEN_COMMENT_KEYWORD) {
+      text_color = YELLOW;
+    } else if (tokens[i]->t == TOKEN_COMMENT) {
+      text_color = GREY;
+    } else {
+      text_color = BLACK;
+    }
 
     SDL_Surface *text_surface =
         TTF_RenderUTF8_Solid(font, tokens[i]->v, text_color);
