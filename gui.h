@@ -48,6 +48,14 @@ typedef struct {
   int horizontal_offset;
 } Scroll;
 
+typedef struct {
+  bool ctrl_pressed;
+  bool shift_pressed;
+  bool keep_window_open;
+  bool refresh_tokens;
+  bool file_modified;
+} State;
+
 // allocs memory
 Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
                              int font_size, Token **tokens, int tokens_count,
@@ -147,14 +155,9 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   return EXIT_SUCCESS;
 }
 
-// TODO: handle the state better than using global vars
-bool ctrl_pressed = false;
-bool shift_pressed = false;
-
 int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                       TTF_Font *font, Texture **text_textures,
-                      int textures_count, Scroll *scroll,
-                      bool *keep_window_open, bool *needs_refreshing) {
+                      int textures_count, Scroll *scroll, State *state) {
 
   int event_count = 0;
   int err = 0;
@@ -168,7 +171,7 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
     if (sdl_event.type == SDL_QUIT || sdl_event.type == SDL_KEYDOWN &&
                                           sdl_event.key.state == SDL_PRESSED &&
                                           sdl_event.key.keysym.sym == SDLK_q) {
-      *keep_window_open = false;
+      state->keep_window_open = false;
       return event_count;
       // Q(UIT) END
 
@@ -177,12 +180,12 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_LCTRL ||
                 sdl_event.key.keysym.sym == SDLK_RCTRL)) {
-      ctrl_pressed = true;
+      state->ctrl_pressed = true;
     } else if (sdl_event.type == SDL_KEYUP &&
                sdl_event.key.state == SDL_RELEASED &&
                (sdl_event.key.keysym.sym == SDLK_LCTRL ||
                 sdl_event.key.keysym.sym == SDLK_RCTRL)) {
-      ctrl_pressed = false;
+      state->ctrl_pressed = false;
       // CTRL END
 
       // SHIFT START
@@ -190,35 +193,35 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_LSHIFT ||
                 sdl_event.key.keysym.sym == SDLK_RSHIFT)) {
-      shift_pressed = true;
+      state->shift_pressed = true;
     } else if (sdl_event.type == SDL_KEYUP &&
                sdl_event.key.state == SDL_RELEASED &&
                (sdl_event.key.keysym.sym == SDLK_LSHIFT ||
                 sdl_event.key.keysym.sym == SDLK_RSHIFT)) {
-      shift_pressed = false;
+      state->shift_pressed = false;
       // SHIFT END
 
       // SCROLL VERTICAL/HORIZONTAL START
-    } else if (!ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
+    } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.y != 0) {
       scroll->vertical_offset += VERTICAL_SCROLL_MULT * sdl_event.wheel.y;
-    } else if (!ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
+    } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.x != 0) {
       scroll->horizontal_offset += HORIZONTAL_SCROLL_MULT * sdl_event.wheel.x;
       // SCROLL VERTICAL/HORIZONTAL END
 
       // FONT RESIZE WITH MOUSEWHEEL START
-    } else if (ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
+    } else if (state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.y != 0) {
       FONT_SIZE += 5 * sign(sdl_event.wheel.y);
       FONT_SIZE = (5 <= FONT_SIZE && FONT_SIZE <= 64) * FONT_SIZE +
                   (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
       TTF_SetFontSize(font, FONT_SIZE);
-      *needs_refreshing = true;
+      state->refresh_tokens = true;
       // FONT RESIZE WITH MOUSEWHEEL END
 
       // FONT RESIZE +/- START
-    } else if (ctrl_pressed && !shift_pressed &&
+    } else if (state->ctrl_pressed && !state->shift_pressed &&
                sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_EQUALS ||
@@ -228,23 +231,24 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
       FONT_SIZE = (5 <= FONT_SIZE && FONT_SIZE <= 64) * FONT_SIZE +
                   (FONT_SIZE < 5) * 5 + (64 < FONT_SIZE) * 64;
       TTF_SetFontSize(font, FONT_SIZE);
-      *needs_refreshing = true;
+      state->refresh_tokens = true;
       // FONT RESIZE +/- END
 
       // FONT RESIZE TO DEFAULT START
-    } else if (ctrl_pressed && shift_pressed && sdl_event.type == SDL_KEYDOWN &&
+    } else if (state->ctrl_pressed && state->shift_pressed &&
+               sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_EQUALS) {
       FONT_SIZE = DEFAULT_FONT_SIZE;
       TTF_SetFontSize(font, FONT_SIZE);
-      *needs_refreshing = true;
+      state->refresh_tokens = true;
       // FONT RESIZE TO DEFAULT END
     }
 
     SDL_RenderClear(renderer);
     err = cpy_to_renderer(renderer, text_textures, textures_count, scroll);
     if (err != EXIT_SUCCESS) {
-      *keep_window_open = false;
+      state->keep_window_open = false;
       return event_count;
     }
     SDL_RenderPresent(renderer);
@@ -319,9 +323,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   SDL_RenderPresent(renderer);
 
-  bool keep_window_open = true;
-  bool was_refreshed = false;
-  bool needs_refreshing = false;
+  State *state = calloc(1, sizeof(State));
+  state->keep_window_open = true;
 
   Uint32 start = SDL_GetTicks();
   Uint32 end = SDL_GetTicks();
@@ -329,22 +332,22 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   int handled_event_count = 0;
 
-  while (keep_window_open) {
+  while (state->keep_window_open) {
 
     start = SDL_GetTicks();
 
     SDL_Event sdl_event;
-    handled_event_count = handle_sdl_events(
-        sdl_event, renderer, font, text_textures, textures_count, scroll,
-        &keep_window_open, &needs_refreshing);
-    if (!keep_window_open) {
+    handled_event_count =
+        handle_sdl_events(sdl_event, renderer, font, text_textures,
+                          textures_count, scroll, state);
+    if (!state->keep_window_open) {
       break;
     }
 
     contents = check_contents(filename, contents, &contents_len, &last_modified,
-                              &was_refreshed);
-    if (was_refreshed) {
-      was_refreshed = false;
+                              &state->file_modified);
+    if (state->file_modified) {
+      state->file_modified = false;
 
       tokens = update_tokens(tokens, contents, contents_len, tokenizer_config,
                              &tokens_count);
@@ -357,8 +360,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       if (err != EXIT_SUCCESS) {
         break;
       }
-    } else if (needs_refreshing) {
-      needs_refreshing = false;
+    } else if (state->refresh_tokens) {
+      state->refresh_tokens = false;
 
       text_textures = update_textures(text_textures, renderer, font, FONT_SIZE,
                                       tokens, tokens_count, &textures_count);
@@ -387,6 +390,9 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   free_contents(contents);
   if (scroll != NULL) {
     free(scroll);
+  }
+  if (state != NULL) {
+    free(state);
   }
 
   return err;
