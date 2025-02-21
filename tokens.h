@@ -169,11 +169,140 @@ void handle_block_comment(Token *token, char *contents, int contents_length,
   }
 }
 
+bool is_word(char c) {
+  return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9' ||
+         c == '_';
+}
+
 // tokenize takes in content, its length and tokenizer configuration
 // and produces tokens based on that, token count is returned through
 // tokens_count variable. allocs memory
 Token **tokenize(char *contents, int contents_length,
                  TokenizerConfig *tokenizer_config, int *tokens_count) {
+
+  if (tokenizer_config == NULL) {
+    tokenizer_config = &DEFAULT_TOKENIZER_CONFIG;
+  }
+
+  Token **tokens =
+      calloc(contents_length + 1,
+             sizeof(Token *)); // NOTE: +1 for possible extra newline
+
+  int prev_offset = 0;
+  int offset = 0;
+
+  bool is_line_comment = false;
+  bool is_block_comment = false;
+  char is_string = 0;
+
+  while (offset < contents_length) {
+
+    Token *token = calloc(1, sizeof(Token));
+    token->t = TOKEN_WORD;
+
+    // NEWLINE start
+    if (contents[offset] == '\n') {
+      token->t = TOKEN_NEWLINE;
+      offset += 1;
+      // NEWLINE end
+
+      // SPACES start
+    } else if (offset < contents_length && contents[offset] == ' ') {
+      token->t = TOKEN_SPACES;
+      char c;
+      while (offset < contents_length && (c = contents[offset]) && c == ' ') {
+        offset += 1;
+      }
+      // SPACES end
+
+      // TABS start
+    } else if (offset < contents_length && contents[offset] == '\t') {
+      token->t = TOKEN_TABS;
+      char c;
+      while (offset < contents_length && (c = contents[offset]) && c == '\t') {
+        offset += 1;
+      }
+      // TABS end
+
+      // WORD start
+    } else {
+      char c;
+      while (offset < contents_length && (c = contents[offset]) && is_word(c)) {
+        offset += 1;
+      }
+      // WORD end
+    }
+
+    if (offset >= contents_length) {
+      offset = contents_length;
+    }
+
+    if (prev_offset == offset) {
+      offset += 1;
+    }
+
+    int vlen = offset - prev_offset;
+
+    if (token->t == TOKEN_TABS) {
+      token->v = calloc(TAB_WIDTH * vlen + 1, sizeof(char));
+      token->vlen = TAB_WIDTH * vlen;
+      memset(token->v, ' ', TAB_WIDTH * vlen);
+    } else {
+      token->v = calloc(vlen + 1, sizeof(char));
+      token->vlen = vlen;
+      memcpy(token->v, contents + prev_offset, vlen);
+    }
+
+    tokens[*tokens_count] = token;
+    *tokens_count += 1;
+
+    prev_offset = offset;
+  }
+
+  // second round
+  for (int i = 0; i < *tokens_count; i += 1) {
+
+    // STRING start
+    // STRING end
+
+    // NUMBER start
+    // NUMBER end
+
+    // LINE_COMMENT start
+    // LINE_COMMENT end
+
+    // BLOCK_COMMENT start
+    // BLOCK_COMMENT end
+
+    // CODE_KEYWORD start
+    // CODE_KEYWORD end
+
+    // COMMENT_KEYWORD start
+    // COMMENT_KEYWORD end
+  }
+
+  // NOTE: if we dont end with newline token,
+  // then the last line is not printed in tui.
+  // To get around it, we add the token, if needed.
+  if (*tokens_count > 0 && strcmp(tokens[*tokens_count - 1]->v, "\n") != 0) {
+    Token *eof_token = calloc(1, sizeof(Token));
+    char *v = calloc(1, sizeof(char));
+    memcpy(v, "\n", 1);
+    eof_token->v = v;
+    eof_token->vlen = 1;
+    eof_token->t = TOKEN_NEWLINE;
+    tokens[*tokens_count] = eof_token;
+    *tokens_count += 1;
+  }
+
+  return tokens;
+}
+
+// tokenize takes in content, its length and tokenizer configuration
+// and produces tokens based on that, token count is returned through
+// tokens_count variable. allocs memory
+Token **tokenize2(char *contents, int contents_length,
+                  TokenizerConfig *tokenizer_config, int *tokens_count) {
 
   if (tokenizer_config == NULL) {
     tokenizer_config = &DEFAULT_TOKENIZER_CONFIG;
