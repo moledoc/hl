@@ -73,6 +73,8 @@ int main(int argc, char **argv) {
   tokenizer_config->code_keywords_count = (const int)code_keywords_count;
   tokenizer_config->line_comment = (const Comment *)line_comment;
   tokenizer_config->block_comment = (const Comment *)block_comment;
+  tokenizer_config->color_comment_keywords = true;
+  tokenizer_config->color_strings = true;
 
   int tokens_count = 0;
   Token **tokens =

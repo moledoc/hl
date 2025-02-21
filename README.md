@@ -48,7 +48,9 @@ Tool to put (colored) text on the screen.
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
+- [ ] merge tokenize_test into the main file
 - [ ] commandline arguments to toggle different functionality; eg tui vs gui mode, overriding comment/code style, etc
+- [ ] resolve TODOs and others
 - [ ] placeholder
 - [ ] proper readme
 - [ ] make it work on other platforms than linux (grep ifdef OSX)

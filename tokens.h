@@ -36,7 +36,8 @@ typedef struct {
   int code_keywords_count;
   const Comment *line_comment;
   const Comment *block_comment;
-  const bool color_comment_keywords;
+  bool color_comment_keywords;
+  bool color_strings;
 } TokenizerConfig;
 
 TokenizerConfig DEFAULT_TOKENIZER_CONFIG = {
@@ -44,7 +45,8 @@ TokenizerConfig DEFAULT_TOKENIZER_CONFIG = {
     .code_keywords_count = DEFAULT_KEYWORDS_COUNT,
     .line_comment = (const Comment *)NULL,
     .block_comment = (const Comment *)NULL,
-};
+    .color_comment_keywords = false,
+    .color_strings = false};
 
 void free_tokenizer_config(TokenizerConfig *tokenizer_config) {
   if (tokenizer_config == NULL) {
@@ -60,13 +62,15 @@ void free_tokenizer_config(TokenizerConfig *tokenizer_config) {
 }
 
 // NOTE: only handles decimals that use '.' as the separator
-bool _is_number(const char *s) {
+bool _is_number(const char *s, int length) {
   char *s_cpy = (char *)s;
   int s_len = 0;
   int dot_count = 0;
   int minus_count = 0;
   char c;
-  while ((c = *(s_cpy++)) != '\0') {
+  int i = 0;
+  while ((c = *(s_cpy++)) != '\0' && i < length) {
+    i += 1;
     if (c == '-' && s_len != 0) {
       return false;
     }
@@ -83,7 +87,7 @@ bool _is_number(const char *s) {
       return false;
     }
   }
-  if (s_len == 1 && minus_count == 1) {
+  if (s_len == 1 && (minus_count == 1 || dot_count == 1)) {
     return false;
   }
   return true;
@@ -101,24 +105,78 @@ bool _strcmp_window(const char *s1, const char *s2, int window_size) {
   return true;
 }
 
+bool is_word_end(char c) {
+  return c == '\n' || c == ' ' || c == '\t' || c == '.' || c == ',' ||
+         c == ':' || c == ';' || c == '(' || c == ')' || c == '[' || c == ']' ||
+         c == '{' || c == '}' || c == '<' || c == '>' || c == '\\' || c == '@';
+}
+
+void handle_string(Token *token, char *contents, int contents_length,
+                   int *offset, char *is_string) {
+  token->t = TOKEN_STRING;
+  bool escaped = false;
+  char c;
+  while (*offset < contents_length && (c = contents[*offset]) &&
+         (c == *is_string && escaped || c != *is_string)) {
+    if (c == '\n' || is_word_end(c)) {
+      return;
+    }
+    escaped = contents[*offset - 1] != '\\' && c == '\\';
+    *offset += 1;
+  }
+  *offset += 1; // NOTE: account for closing quote
+  if (c == *is_string) {
+    *is_string = 0;
+  }
+}
+
+void handle_line_comment(Token *token, char *contents, int contents_length,
+                         int *offset, bool *is_line_comment) {
+  token->t = TOKEN_COMMENT;
+  char c;
+  while (*offset < contents_length && (c = contents[*offset])) {
+    if (c == '\n') {
+      *is_line_comment = false;
+      return;
+    }
+    if (is_word_end(c)) {
+      break;
+    }
+    *offset += 1;
+  }
+}
+
+void handle_block_comment(Token *token, char *contents, int contents_length,
+                          int *offset, bool *is_block_comment,
+                          Comment *block_comment) {
+  token->t = TOKEN_COMMENT;
+  char c;
+  while (*offset < contents_length && (c = contents[*offset]) &&
+         !is_word_end(c)) {
+    if (*offset + block_comment->end_len < contents_length &&
+        _strcmp_window((const char *)(contents + *offset),
+                       (const char *)block_comment->end,
+                       block_comment->end_len) == 1) {
+      *is_block_comment = false;
+      *offset += block_comment->end_len;
+      return;
+    }
+
+    if (c == '\n' || is_word_end(c)) {
+      return;
+    }
+    *offset += 1;
+  }
+}
+
 // tokenize takes in content, its length and tokenizer configuration
 // and produces tokens based on that, token count is returned through
 // tokens_count variable. allocs memory
 Token **tokenize(char *contents, int contents_length,
                  TokenizerConfig *tokenizer_config, int *tokens_count) {
 
-  // TODO: make better decision about this
-  Comment *line_comment = NULL;
-  Comment *block_comment = NULL;
-  char **code_keywords = (char **)default_keywords;
-  int code_keywords_count = DEFAULT_KEYWORDS_COUNT;
-  bool color_comment_keywords = false;
-  if (tokenizer_config != NULL) {
-    line_comment = (Comment *)tokenizer_config->line_comment;
-    block_comment = (Comment *)tokenizer_config->block_comment;
-    code_keywords = (char **)tokenizer_config->code_keywords;
-    code_keywords_count = (int)tokenizer_config->code_keywords_count;
-    color_comment_keywords = (bool)tokenizer_config->color_comment_keywords;
+  if (tokenizer_config == NULL) {
+    tokenizer_config = &DEFAULT_TOKENIZER_CONFIG;
   }
 
   Token **tokens =
@@ -130,87 +188,105 @@ Token **tokenize(char *contents, int contents_length,
 
   bool is_line_comment = false;
   bool is_block_comment = false;
-  bool is_string = false;
+  char is_string = 0;
 
   while (offset < contents_length) {
 
     Token *token = calloc(1, sizeof(Token));
     token->t = TOKEN_WORD;
 
-    // TODO: handle STRING same way as COMMENTs (gui multiline string doesn't
-    // handle newline chars correctly atm)
-    // STRING start
-    if (!is_line_comment && !is_block_comment && contents[offset] == '"' ||
-        contents[offset] == '\'') {
-      char closing_quote = contents[offset];
-      token->t = TOKEN_STRING;
-      offset += 1; // account for opening quote
-      if (offset >= contents_length) {
-        offset = contents_length;
-      }
-      bool escaped = false;
-      char c;
-      while (offset < contents_length && (c = contents[offset]) &&
-             (c == closing_quote && escaped || c != closing_quote)) {
-        escaped = contents[offset - 1] != '\\' && c == '\\';
-        offset += 1;
-      }
-      offset += 1; // NOTE: account for closing quote
-      // STRING end
+    // NEWLINE start
+    if (contents[offset] == '\n') {
+      token->t = TOKEN_NEWLINE;
+      offset += 1;
+      // NEWLINE end
+
+      /*
+            // STRING start
+          } else if (tokenizer_config->color_strings && is_string == 0 &&
+                         !is_line_comment && !is_block_comment &&
+                         contents[offset] == '"' ||
+                     contents[offset] == '\'') {
+            is_string = contents[offset];
+            offset += 1;
+            handle_string(token, contents, contents_length, &offset,
+         &is_string); } else if (tokenizer_config->color_strings && is_string !=
+         0) { handle_string(token, contents, contents_length, &offset,
+         &is_string);
+            // STRING end
+      */
 
       // LINE_COMMENT start
-    } else if (line_comment != NULL &&
-               offset + line_comment->begin_len < contents_length &&
-               _strcmp_window((const char *)(contents + offset),
-                              (const char *)line_comment->begin,
-                              line_comment->begin_len) == 1) {
+    } else if (tokenizer_config->line_comment != NULL && !is_line_comment &&
+               offset + tokenizer_config->line_comment->begin_len <
+                   contents_length &&
+               _strcmp_window(
+                   (const char *)(contents + offset),
+                   (const char *)tokenizer_config->line_comment->begin,
+                   tokenizer_config->line_comment->begin_len) == 1) {
       is_line_comment = true;
-      offset += line_comment->begin_len;
-    } else if (line_comment != NULL &&
-               offset + line_comment->end_len < contents_length &&
-               _strcmp_window((const char *)(contents + offset),
-                              (const char *)line_comment->end,
-                              line_comment->end_len) == 1) {
-      is_line_comment = false;
-      offset += line_comment->end_len;
+      offset += tokenizer_config->line_comment->begin_len;
+      handle_line_comment(token, contents, contents_length, &offset,
+                          &is_line_comment);
+    } else if (tokenizer_config->line_comment != NULL && is_line_comment) {
+      handle_line_comment(token, contents, contents_length, &offset,
+                          &is_line_comment);
       // LINE_COMMENT end
 
       // BLOCK_COMMENT start
-    } else if (block_comment != NULL &&
-               offset + block_comment->begin_len < contents_length &&
-               _strcmp_window((const char *)(contents + offset),
-                              (const char *)block_comment->begin,
-                              block_comment->begin_len) == 1) {
+    } else if (tokenizer_config->block_comment != NULL &&
+               offset + tokenizer_config->block_comment->begin_len <
+                   contents_length &&
+               _strcmp_window(
+                   (const char *)(contents + offset),
+                   (const char *)tokenizer_config->block_comment->begin,
+                   tokenizer_config->block_comment->begin_len) == 1) {
       is_block_comment = true;
-      offset += block_comment->begin_len;
-    } else if (block_comment != NULL &&
-               offset + block_comment->end_len < contents_length &&
-               _strcmp_window((const char *)(contents + offset),
-                              (const char *)block_comment->end,
-                              block_comment->end_len) == 1) {
-      is_block_comment = false;
-      offset += block_comment->end_len;
-      token->t = TOKEN_COMMENT; // NOTE: here is fine to add, since block
-                                // comment doesn't end with newline
+      offset += tokenizer_config->block_comment->begin_len;
+      handle_block_comment(token, contents, contents_length, &offset,
+                           &is_block_comment,
+                           (Comment *)tokenizer_config->block_comment);
+    } else if (tokenizer_config->block_comment != NULL && is_block_comment) {
+      handle_block_comment(token, contents, contents_length, &offset,
+                           &is_block_comment,
+                           (Comment *)tokenizer_config->block_comment);
+
       // BLOCK_COMMENT end
 
       // SPACES start
     } else if (offset < contents_length && contents[offset] == ' ') {
+      token->t = TOKEN_SPACES;
       char c;
       while (offset < contents_length && (c = contents[offset]) && c == ' ') {
         offset += 1;
       }
-      token->t = TOKEN_SPACES;
       // SPACES end
 
       // TABS start
     } else if (offset < contents_length && contents[offset] == '\t') {
+      token->t = TOKEN_TABS;
       char c;
       while (offset < contents_length && (c = contents[offset]) && c == '\t') {
         offset += 1;
       }
-      token->t = TOKEN_TABS;
       // TABS end
+
+      // NUMBER start
+    } else if ('0' <= contents[offset] && contents[offset] <= '9' ||
+               offset + 1 < contents_length && contents[offset] == '-' &&
+                   '0' <= contents[offset + 1] && contents[offset + 1] <= '9') {
+      offset += 1;
+      char c;
+      while (offset < contents_length && (c = contents[offset]) &&
+             (!is_word_end(c) || c == '.')) {
+        offset += 1;
+      }
+
+      if (_is_number(contents + prev_offset, offset - prev_offset)) {
+        token->t = TOKEN_NUMBER;
+      }
+
+      // NUMBER end
 
       // WORD start
     } else {
@@ -227,8 +303,8 @@ Token **tokenize(char *contents, int contents_length,
       // them down when encountered
       while (offset < contents_length && (c = contents[offset]) &&
              ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' ||
-              '0' <= c && c <= '9' || c == '+' || c == '-' || c == '.' ||
-              c == '\'' || c == '_')) {
+              '0' <= c && c <= '9' || c == '+' || c == '-' || c == '\'' ||
+              c == '_')) {
         offset += 1;
       }
       // WORD end
@@ -255,15 +331,9 @@ Token **tokenize(char *contents, int contents_length,
     }
 
     {
-      if (_is_number((const char *)token->v)) {
-        token->t = TOKEN_NUMBER;
-      }
-    }
-
-    {
-      if (token->t == TOKEN_WORD && code_keywords != NULL) {
-        for (int i = 0; i < code_keywords_count; i += 1) {
-          if (strcmp(token->v, code_keywords[i]) == 0) {
+      if (token->t == TOKEN_WORD && tokenizer_config->code_keywords != NULL) {
+        for (int i = 0; i < tokenizer_config->code_keywords_count; i += 1) {
+          if (strcmp(token->v, tokenizer_config->code_keywords[i]) == 0) {
             token->t = TOKEN_CODE_KEYWORD;
             break;
           }
@@ -272,27 +342,14 @@ Token **tokenize(char *contents, int contents_length,
     }
 
     {
-      if (color_comment_keywords && token->t == TOKEN_COMMENT ||
-          token->t == TOKEN_WORD) {
+      if (tokenizer_config->color_comment_keywords &&
+          token->t == TOKEN_COMMENT) {
         for (int i = 0; i < COMMENT_KEYWORDS_COUNT; i += 1) {
           if (strcmp(token->v, comment_keywords[i]) == 0) {
             token->t = TOKEN_COMMENT_KEYWORD;
             break;
           }
         }
-      }
-    }
-
-    {
-      if (token->t == TOKEN_WORD && token->vlen == 1 && *(token->v) == '\n') {
-        token->t = TOKEN_NEWLINE;
-      }
-    }
-
-    {
-      if ((is_line_comment || is_block_comment) &&
-          (token->t != TOKEN_COMMENT_KEYWORD && token->t != TOKEN_NEWLINE)) {
-        token->t = TOKEN_COMMENT;
       }
     }
 
