@@ -174,6 +174,17 @@ bool is_word(char c) {
          c == '_';
 }
 
+bool is_int(char c) { return '0' <= c && c <= '9'; }
+
+bool is_nr(Token *token) {
+  for (int i = 0; i < token->vlen; i += 1) {
+    if (!is_int((token->v)[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // tokenize takes in content, its length and tokenizer configuration
 // and produces tokens based on that, token count is returned through
 // tokens_count variable. allocs memory
@@ -271,9 +282,11 @@ Token **tokenize(char *contents, int contents_length,
       tokens[i]->t = TOKEN_STRING;
       i += 1;
       while (i < *tokens_count) {
+
         if (tokens[i]->t == TOKEN_WORD) {
           tokens[i]->t = TOKEN_STRING;
         }
+
         if (tokens[i]->vlen == 1 && *tokens[i]->v == quote &&
             ((i - 1 > -1 &&
               *tokens[i - 1]->v != '\\') || // NOTE: \\ before closing quote
@@ -283,10 +296,33 @@ Token **tokenize(char *contents, int contents_length,
         }
         i += 1;
       }
-    }
-    // STRING end
+      // STRING end
 
-    // NUMBER start
+      // NUMBER start
+    } else if (is_nr(tokens[i])) {
+      if (tokens[i]->t == TOKEN_WORD) {
+        tokens[i]->t = TOKEN_NUMBER;
+      }
+
+      // NOTE: check if negative
+      if (i - 1 > -1 && tokens[i - 1]->vlen == 1 &&
+          *(tokens[i - 1]->v) == '-') {
+        tokens[i - 1]->t = TOKEN_NUMBER;
+      }
+
+      // NOTE: check if decimal
+      // NOTE: also include 'nr.'-repeating (eg ip-addresses) as valid numbers
+      while (true) {
+        if (i + 2 < *tokens_count && tokens[i + 1]->vlen == 1 &&
+            *(tokens[i + 1]->v) == '.' && is_nr(tokens[i + 2])) {
+          tokens[i + 1]->t = TOKEN_NUMBER;
+          tokens[i + 2]->t = TOKEN_NUMBER;
+          i += 2;
+        } else {
+          break;
+        }
+      }
+    }
     // NUMBER end
 
     // LINE_COMMENT start
