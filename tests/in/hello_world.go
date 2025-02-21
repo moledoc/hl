@@ -6,9 +6,12 @@ import (
 )
 
 // NOTE: it's an english sentence
+//NOTE: it's an english sentence
 /*
 NOTE: it's an english sentence
 */
+/* NOTE: it's an english sentence */
+/*NOTE: it's an english sentence*/
 
 func main() {
 	var c byte
