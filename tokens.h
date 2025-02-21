@@ -262,7 +262,28 @@ Token **tokenize(char *contents, int contents_length,
   // second round
   for (int i = 0; i < *tokens_count; i += 1) {
 
-    // STRING start
+    if (0) {
+
+      // STRING start
+    } else if (tokens[i]->t == TOKEN_WORD && tokens[i]->vlen == 1 &&
+               (*tokens[i]->v == '\'' || *tokens[i]->v == '"')) {
+      char quote = *tokens[i]->v;
+      tokens[i]->t = TOKEN_STRING;
+      i += 1;
+      while (i < *tokens_count) {
+        if (tokens[i]->t == TOKEN_WORD) {
+          tokens[i]->t = TOKEN_STRING;
+        }
+        if (tokens[i]->vlen == 1 && *tokens[i]->v == quote &&
+            ((i - 1 > -1 &&
+              *tokens[i - 1]->v != '\\') || // NOTE: \\ before closing quote
+             (i - 2 > -1 && *tokens[i - 1]->v == '\\' &&
+              *tokens[i - 2]->v == '\\'))) { // NOTE: no \ before closing quote
+          break;
+        }
+        i += 1;
+      }
+    }
     // STRING end
 
     // NUMBER start
