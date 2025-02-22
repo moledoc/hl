@@ -34,6 +34,10 @@ typedef struct {
 typedef struct {
   const char **code_keywords;
   int code_keywords_count;
+  //
+  const char **comment_keywords;
+  int comment_keywords_count;
+  //
   const Comment *line_comment;
   const Comment *block_comment;
   bool color_comment_keywords;
@@ -43,6 +47,8 @@ typedef struct {
 TokenizerConfig DEFAULT_TOKENIZER_CONFIG = {
     .code_keywords = (const char **)default_keywords,
     .code_keywords_count = DEFAULT_KEYWORDS_COUNT,
+    .comment_keywords = (const char **)default_keywords,
+    .comment_keywords_count = DEFAULT_KEYWORDS_COUNT,
     .line_comment = (const Comment *)NULL,
     .block_comment = (const Comment *)NULL,
     .color_comment_keywords = false,
@@ -274,17 +280,6 @@ Token **tokenize(char *contents, int contents_length,
   for (int i = 0; i < *tokens_count; i += 1) {
     if (0) {
 
-      // CODE_KEYWORD start
-    } else if (tokens[i]->t == TOKEN_WORD &&
-               tokenizer_config->code_keywords != NULL) {
-      for (int j = 0; j < tokenizer_config->code_keywords_count; j += 1) {
-        if (strcmp(tokens[i]->v, tokenizer_config->code_keywords[j]) == 0) {
-          tokens[i]->t = TOKEN_CODE_KEYWORD;
-          break;
-        }
-      }
-      // CODE_KEYWORD end
-
       // STRING start
     } else if (tokens[i]->t == TOKEN_WORD && tokens[i]->vlen == 1 &&
                (*tokens[i]->v == '\'' || *tokens[i]->v == '"')) {
@@ -337,6 +332,32 @@ Token **tokenize(char *contents, int contents_length,
 
       // BLOCK_COMMENT start
       // BLOCK_COMMENT end
+
+      // KEYWORDS start
+    } else if (tokens[i]->t == TOKEN_WORD) {
+
+      // CODE_KEYWORD start
+      for (int j = 0; tokenizer_config->code_keywords != NULL &&
+                      j < tokenizer_config->code_keywords_count;
+           j += 1) {
+        if (strcmp(tokens[i]->v, tokenizer_config->code_keywords[j]) == 0) {
+          tokens[i]->t = TOKEN_CODE_KEYWORD;
+          break;
+        }
+      }
+      // CODE_KEYWORD end
+
+      // COMMENT_KEYWORD start
+      for (int j = 0; tokenizer_config->comment_keywords != NULL &&
+                      j < tokenizer_config->comment_keywords_count;
+           j += 1) {
+        if (strcmp(tokens[i]->v, tokenizer_config->comment_keywords[j]) == 0) {
+          tokens[i]->t = TOKEN_COMMENT_KEYWORD;
+          break;
+        }
+      }
+      // COMMENT_KEYWORD end
+      // KEYWORDS end
 
       // END
     }
