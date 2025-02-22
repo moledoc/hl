@@ -243,17 +243,24 @@ void handle_comment(Token **tokens, int *offset, int tokens_count,
 
   // NOTE: mark comment begin tokens
   for (; *offset < comment->begin_len; *offset += 1) {
-    tokens[*offset]->t = TOKEN_COMMENT;
+    if (tokens[*offset]->t == TOKEN_WORD) {
+      tokens[*offset]->t = TOKEN_COMMENT;
+    }
   }
 
-  while (!is_comment_end(tokens, *offset, tokens_count, comment)) {
-    tokens[*offset]->t = TOKEN_COMMENT;
+  while (*offset < tokens_count &&
+         !is_comment_end(tokens, *offset, tokens_count, comment)) {
+    if (tokens[*offset]->t == TOKEN_WORD) {
+      tokens[*offset]->t = TOKEN_COMMENT;
+    }
     *offset += 1;
   }
 
   // NOTE: mark comment end tokens
   for (; *offset < comment->end_len; *offset += 1) {
-    tokens[*offset]->t = TOKEN_COMMENT;
+    if (tokens[*offset]->t == TOKEN_WORD) {
+      tokens[*offset]->t = TOKEN_COMMENT;
+    }
   }
 }
 
