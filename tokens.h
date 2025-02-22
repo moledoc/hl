@@ -255,10 +255,11 @@ void handle_comment(Token **tokens, int *offset, int tokens_count,
   }
 
   // NOTE: mark comment begin tokens
-  for (; *offset < comment->begin_len; *offset += 1) {
+  for (int i = 0; i < comment->begin_len; i += 1) {
     if (tokens[*offset]->t == TOKEN_WORD) {
       tokens[*offset]->t = TOKEN_COMMENT;
     }
+    *offset += 1;
   }
 
   while (*offset < tokens_count &&
@@ -276,11 +277,13 @@ void handle_comment(Token **tokens, int *offset, int tokens_count,
   }
 
   // NOTE: mark comment end tokens
-  for (; *offset < comment->end_len; *offset += 1) {
+  for (int i = 0; i < comment->end_len; i += 1) {
     if (tokens[*offset]->t == TOKEN_WORD) {
       tokens[*offset]->t = TOKEN_COMMENT;
     }
+    *offset += 1;
   }
+  *offset -= 1; // NOTE: account for loop iteration
 }
 
 // tokenize takes in content, its length and tokenizer configuration
@@ -437,6 +440,10 @@ Token **tokenize(char *contents, int contents_length,
       // LINE_COMMENT end
 
       // BLOCK_COMMENT start
+    } else if (is_comment_start(tokens, offset, *tokens_count,
+                                tokenizer_config->block_comment)) {
+      handle_comment(tokens, &offset, *tokens_count,
+                     tokenizer_config->block_comment, tokenizer_config);
       // BLOCK_COMMENT end
 
       // END
