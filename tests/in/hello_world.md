@@ -27,3 +27,5 @@ It's an english sentence
 --- horizontal rule
 
 ~~strikethrough~~
+
+<!-- NOTE: it's an english sentence -->

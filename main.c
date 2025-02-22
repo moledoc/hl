@@ -11,22 +11,29 @@
 
 void help() {
   printf("NAME\n\t%s - put (colored) text to screen\n", PROG_NAME);
-  printf("\nSYNOPSIS\n\t%s FILE\n", PROG_NAME);
-  printf("\nOPTIONS\n");
-  printf("\t%s\n\t\tprint help\n", "-h, -help, --help, help");
-  printf("\t%s\n\t\tprint version\n", "-v, -version, --version, version");
-  printf("\nEXAMPLES\n");
+  /*
+    printf("\nSYNOPSIS\n\t%s <TODO:>\n", PROG_NAME);
+    printf("\nOPTIONS\n");
+    printf("\t%s\n\t\tprint help\n", "-h, -help, --help, help");
+    printf("\t%s\n\t\tprint version\n", "-v, -version, --version, version");
+    printf("\nEXAMPLES\n");
+  */
   printf("\t* TODO:\n");
   printf("\nAUTHOR\n");
   printf("\tMeelis Utt (meelis.utt@gmail.com)\n");
 }
 
 enum MODE { MODE_GUI = 0, MODE_TUI, MODE_TOKENS, MODE_COUNT };
+enum COLOR { COLOR_NOT_SET = 0, COLOR_YES = true, COLOR_NO = false };
 
 int main(int argc, char **argv) {
 
   char *filename = NULL;
   enum MODE mode = MODE_GUI;
+  enum COLOR color_code_keywords = COLOR_NOT_SET;
+  enum COLOR color_comment_keywords = COLOR_NOT_SET;
+  enum COLOR color_numbers = COLOR_NOT_SET;
+  enum COLOR color_strings = COLOR_NOT_SET;
 
   for (int i = 1; i < argc; ++i) {
     char *flag = argv[i];
@@ -39,13 +46,38 @@ int main(int argc, char **argv) {
                strcmp("--version", flag) == 0) {
       printf("version: %s\n", VERSION);
       return 0;
+      //
     } else if (strcmp("--tui", flag) == 0) {
       mode = MODE_TUI;
     } else if (strcmp("--tokens", flag) == 0) {
       mode = MODE_TOKENS;
+      //
+    } else if (strcmp("--color-codes", flag) == 0) {
+      color_code_keywords = COLOR_YES;
+    } else if (strcmp("--color-comments", flag) == 0) {
+      color_comment_keywords = COLOR_YES;
+    } else if (strcmp("--color-numbers", flag) == 0) {
+      color_numbers = COLOR_YES;
+    } else if (strcmp("--color-strings", flag) == 0) {
+      color_strings = COLOR_YES;
+      //
+    } else if (strcmp("--no-color-codes", flag) == 0) {
+      color_code_keywords = COLOR_NO;
+    } else if (strcmp("--no-color-comments", flag) == 0) {
+      color_comment_keywords = COLOR_NO;
+    } else if (strcmp("--no-color-numbers", flag) == 0) {
+      color_numbers = COLOR_NO;
+    } else if (strcmp("--no-color-strings", flag) == 0) {
+      color_strings = COLOR_NO;
+      //
+    } else if ((strcmp("-f", flag) == 0 || strcmp("--file", flag) == 0) &&
+               i + 1 < argc) {
+      filename = argv[i + 1];
+      i += 1;
     } else if (i == argc - 1) {
       filename = flag;
-    } else {
+      //
+    } else if (filename == NULL) {
       fprintf(stderr, "unexpected flag '%s'\n", flag);
       return 1;
     }
@@ -63,81 +95,100 @@ int main(int argc, char **argv) {
 
   char *ext = file_ext(filename);
 
-  Comment *line_comment = NULL;
-  Comment *block_comment = NULL;
-  char **code_keywords = NULL;
-  int code_keywords_count = 0;
+  TokenizerConfig *tokenizer_config = &DEFAULT_TOKENIZER_CONFIG;
 
   if (strcmp(ext, "c") == 0 || strcmp(ext, "cpp") == 0 ||
       strcmp(ext, "h") == 0) {
-    line_comment = c_style_line_comment();
-    block_comment = c_style_block_comment();
-    code_keywords = (char **)c_keywords;
-    code_keywords_count = C_KEYWORDS_COUNT;
+    tokenizer_config->line_comment = c_style_line_comment();
+    tokenizer_config->block_comment = c_style_block_comment();
+    //
+    tokenizer_config->code_keywords = c_keywords;
+    tokenizer_config->code_keywords_count = C_KEYWORDS_COUNT;
+    //
+    tokenizer_config->color_code_keywords = true;
+    tokenizer_config->color_comment_keywords = true;
+    tokenizer_config->color_numbers = true;
+    tokenizer_config->color_strings = true;
 
   } else if (strcmp(ext, "go") == 0) {
-    line_comment = c_style_line_comment();
-    block_comment = c_style_block_comment();
-    code_keywords = (char **)go_keywords;
-    code_keywords_count = GO_KEYWORDS_COUNT;
+    tokenizer_config->line_comment = c_style_line_comment();
+    tokenizer_config->block_comment = c_style_block_comment();
+    //
+    tokenizer_config->code_keywords = go_keywords;
+    tokenizer_config->code_keywords_count = GO_KEYWORDS_COUNT;
+    //
+    tokenizer_config->color_code_keywords = true;
+    tokenizer_config->color_comment_keywords = true;
+    tokenizer_config->color_numbers = true;
+    tokenizer_config->color_strings = true;
 
   } else if (strcmp(ext, "py") == 0) {
-    line_comment = py_style_line_comment();
-    code_keywords = (char **)py_keywords;
-    code_keywords_count = PY_KEYWORDS_COUNT;
+    tokenizer_config->line_comment = py_style_line_comment();
+    //
+    tokenizer_config->code_keywords = py_keywords;
+    tokenizer_config->code_keywords_count = PY_KEYWORDS_COUNT;
+    //
+    tokenizer_config->color_code_keywords = true;
+    tokenizer_config->color_comment_keywords = true;
+    tokenizer_config->color_numbers = true;
+    tokenizer_config->color_strings = true;
 
   } else if (strcmp(ext, "md") == 0) {
-    block_comment = html_style_block_comment();
-    code_keywords = (char **)md_keywords;
-    code_keywords_count = MD_KEYWORDS_COUNT;
+    tokenizer_config->block_comment = html_style_block_comment();
+    //
+    tokenizer_config->code_keywords = md_keywords;
+    tokenizer_config->code_keywords_count = MD_KEYWORDS_COUNT;
+    //
+    tokenizer_config->color_code_keywords = true;
+    tokenizer_config->color_comment_keywords = true;
+    tokenizer_config->color_numbers = true;
 
   } else if (strcmp(ext, "html") == 0) {
-    block_comment = html_style_block_comment();
-  }
-
-  int contents_len = 0;
-  char *contents = read_contents(filename, &contents_len);
-
-  TokenizerConfig *tokenizer_config = calloc(1, sizeof(TokenizerConfig));
-  //
-  tokenizer_config->code_keywords = (const char **)code_keywords;
-  tokenizer_config->code_keywords_count = (const int)code_keywords_count;
-  //
-  tokenizer_config->comment_keywords = (const char **)comment_keywords;
-  tokenizer_config->comment_keywords_count = (const int)COMMENT_KEYWORDS_COUNT;
-  //
-  tokenizer_config->line_comment = (const Comment *)line_comment;
-  tokenizer_config->block_comment = (const Comment *)block_comment;
-  //
-  tokenizer_config->color_comment_keywords = true;
-  tokenizer_config->color_strings = true;
-
-  int tokens_count = 0;
-  Token **tokens =
-      tokenize(contents, contents_len, tokenizer_config, &tokens_count);
-
-  int ret = 0;
-  switch (mode) {
-  case MODE_GUI:
-    ret = gui_loop(filename, tokenizer_config);
-    break;
-  case MODE_TUI:
-    ret = tui_loop(filename, tokenizer_config);
-    break;
-  case MODE_TOKENS:
-    print_buffer = calloc(PRINT_BUFFER_SIZE, sizeof(char));
-    print_tokens(tokens, tokens_count);
-    if (print_buffer != NULL) {
-      free(print_buffer);
-    }
-  case MODE_COUNT:
-    break;
+    tokenizer_config->block_comment = html_style_block_comment();
+    //
+    tokenizer_config->color_comment_keywords = true;
+    tokenizer_config->color_numbers = true;
   }
 
   if (ext != NULL) {
     free(ext);
   }
-  free_tokenizer_config(tokenizer_config);
+
+  if (color_code_keywords != COLOR_NOT_SET) {
+    tokenizer_config->color_code_keywords = color_code_keywords;
+  };
+  if (color_comment_keywords != COLOR_NOT_SET) {
+    tokenizer_config->color_comment_keywords = color_comment_keywords;
+  };
+  if (color_numbers != COLOR_NOT_SET) {
+    tokenizer_config->color_numbers = color_numbers;
+  };
+  if (color_strings != COLOR_NOT_SET) {
+    tokenizer_config->color_strings = color_strings;
+  };
+
+  int ret = 0;
+  if (mode == MODE_GUI) {
+    ret = gui_loop(filename, tokenizer_config);
+  } else if (mode == MODE_TUI) {
+    ret = tui_loop(filename, tokenizer_config);
+  } else if (mode == MODE_TOKENS) {
+    int contents_len = 0;
+    char *contents = read_contents(filename, &contents_len);
+
+    int tokens_count = 0;
+    Token **tokens =
+        tokenize(contents, contents_len, tokenizer_config, &tokens_count);
+    print_buffer = calloc(PRINT_BUFFER_SIZE, sizeof(char));
+    print_tokens(tokens, tokens_count);
+    if (print_buffer != NULL) {
+      free(print_buffer);
+    }
+    free_tokens(tokens, tokens_count);
+    if (contents != NULL) {
+      free(contents);
+    }
+  }
 
   return ret;
 }

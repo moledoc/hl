@@ -41,8 +41,9 @@ typedef struct {
   const Comment *line_comment;
   const Comment *block_comment;
   //
-  // TODO: impl and introduce flags to control coloring
+  bool color_code_keywords;
   bool color_comment_keywords;
+  bool color_numbers;
   bool color_strings;
 } TokenizerConfig;
 
@@ -53,7 +54,9 @@ TokenizerConfig DEFAULT_TOKENIZER_CONFIG = {
     .comment_keywords_count = DEFAULT_KEYWORDS_COUNT,
     .line_comment = (const Comment *)NULL,
     .block_comment = (const Comment *)NULL,
+    .color_code_keywords = false,
     .color_comment_keywords = false,
+    .color_numbers = false,
     .color_strings = false};
 
 void free_tokenizer_config(TokenizerConfig *tokenizer_config) {
@@ -207,9 +210,11 @@ void handle_comment(Token **tokens, int *offset, int tokens_count,
       tokens[*offset]->t = TOKEN_COMMENT;
 
       // COMMENT_KEYWORD start
-      handle_keyword(tokens[*offset], tokenizer_config->comment_keywords,
-                     tokenizer_config->comment_keywords_count,
-                     TOKEN_COMMENT_KEYWORD);
+      if (tokenizer_config->color_comment_keywords) {
+        handle_keyword(tokens[*offset], tokenizer_config->comment_keywords,
+                       tokenizer_config->comment_keywords_count,
+                       TOKEN_COMMENT_KEYWORD);
+      }
       // COMMENT_KEYWORD end
     }
     *offset += 1;
@@ -320,8 +325,10 @@ Token **tokenize(char *contents, int contents_length,
   for (int offset = 0; offset < *tokens_count; offset += 1) {
 
     // CODE_KEYWORD start
-    handle_keyword(tokens[offset], tokenizer_config->code_keywords,
-                   tokenizer_config->code_keywords_count, TOKEN_CODE_KEYWORD);
+    if (tokenizer_config->color_code_keywords) {
+      handle_keyword(tokens[offset], tokenizer_config->code_keywords,
+                     tokenizer_config->code_keywords_count, TOKEN_CODE_KEYWORD);
+    }
     // CODE_KEYWORD end
 
     // NOTE: if it's not TOKEN_WORD, then we already parsed it,
@@ -330,13 +337,13 @@ Token **tokenize(char *contents, int contents_length,
       continue;
 
       // STRING start
-    } else if (tokens[offset]->vlen == 1 &&
+    } else if (tokenizer_config->color_strings && tokens[offset]->vlen == 1 &&
                (*tokens[offset]->v == '\'' || *tokens[offset]->v == '"')) {
       handle_string(tokens, &offset, *tokens_count);
       // STRING end
 
       // NUMBER start
-    } else if (is_nr(tokens[offset])) {
+    } else if (tokenizer_config->color_numbers && is_nr(tokens[offset])) {
       handle_number(tokens, &offset, *tokens_count);
       // NUMBER end
 
