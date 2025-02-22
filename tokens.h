@@ -191,6 +191,19 @@ bool is_nr(Token *token) {
   return true;
 }
 
+void handle_keyword(Token *token, const char **keywords, int keywords_count,
+                    enum TOKEN_TYPE token_type) {
+  if (token == NULL || keywords == NULL) {
+    return;
+  }
+  for (int i = 0; i < keywords_count; i += 1) {
+    if (strcmp(token->v, keywords[i]) == 0) {
+      token->t = token_type;
+      return;
+    }
+  }
+}
+
 bool is_comment_start(Token **tokens, int offset, int tokens_count,
                       const Comment *comment) {
 
@@ -234,7 +247,7 @@ bool is_comment_end(Token **tokens, int offset, int tokens_count,
 }
 
 void handle_comment(Token **tokens, int *offset, int tokens_count,
-                    const Comment *comment) {
+                    const Comment *comment, TokenizerConfig *tokenizer_config) {
 
   if (tokens == NULL || offset == NULL || tokens_count == 0 ||
       comment == NULL) {
@@ -252,6 +265,12 @@ void handle_comment(Token **tokens, int *offset, int tokens_count,
          !is_comment_end(tokens, *offset, tokens_count, comment)) {
     if (tokens[*offset]->t == TOKEN_WORD) {
       tokens[*offset]->t = TOKEN_COMMENT;
+
+      // COMMENT_KEYWORD start
+      handle_keyword(tokens[*offset], tokenizer_config->comment_keywords,
+                     tokenizer_config->comment_keywords_count,
+                     TOKEN_COMMENT_KEYWORD);
+      // COMMENT_KEYWORD end
     }
     *offset += 1;
   }
@@ -352,31 +371,10 @@ Token **tokenize(char *contents, int contents_length,
   // second round
   for (int offset = 0; offset < *tokens_count; offset += 1) {
 
-    // KEYWORDS start
-
     // CODE_KEYWORD start
-    for (int j = 0; tokenizer_config->code_keywords != NULL &&
-                    j < tokenizer_config->code_keywords_count;
-         j += 1) {
-      if (strcmp(tokens[offset]->v, tokenizer_config->code_keywords[j]) == 0) {
-        tokens[offset]->t = TOKEN_CODE_KEYWORD;
-        break;
-      }
-    }
+    handle_keyword(tokens[offset], tokenizer_config->code_keywords,
+                   tokenizer_config->code_keywords_count, TOKEN_CODE_KEYWORD);
     // CODE_KEYWORD end
-
-    // COMMENT_KEYWORD start
-    for (int j = 0; tokenizer_config->comment_keywords != NULL &&
-                    j < tokenizer_config->comment_keywords_count;
-         j += 1) {
-      if (strcmp(tokens[offset]->v, tokenizer_config->comment_keywords[j]) ==
-          0) {
-        tokens[offset]->t = TOKEN_COMMENT_KEYWORD;
-        break;
-      }
-    }
-    // COMMENT_KEYWORD end
-    // KEYWORDS end
 
     // NOTE: if it's not TOKEN_WORD, then we already parsed it,
     // skip further processing
@@ -435,7 +433,7 @@ Token **tokenize(char *contents, int contents_length,
     } else if (is_comment_start(tokens, offset, *tokens_count,
                                 tokenizer_config->line_comment)) {
       handle_comment(tokens, &offset, *tokens_count,
-                     tokenizer_config->line_comment);
+                     tokenizer_config->line_comment, tokenizer_config);
       // LINE_COMMENT end
 
       // BLOCK_COMMENT start
