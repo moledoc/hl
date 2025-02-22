@@ -191,6 +191,72 @@ bool is_nr(Token *token) {
   return true;
 }
 
+bool is_comment_start(Token **tokens, int offset, int tokens_count,
+                      const Comment *comment) {
+
+  if (tokens == NULL || tokens_count == 0 || comment == NULL) {
+    return false;
+  }
+  if (offset + comment->begin_len >= tokens_count) {
+    return false;
+  }
+
+  for (int i = 0; i < comment->begin_len; i += 1) {
+    if (tokens[offset + i]->vlen != 1) {
+      return false;
+    }
+    if (*(tokens[offset + i]->v) != comment->begin[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool is_comment_end(Token **tokens, int offset, int tokens_count,
+                    const Comment *comment) {
+
+  if (tokens == NULL || tokens_count == 0 || comment == NULL) {
+    return false;
+  }
+  if (offset + comment->end_len >= tokens_count) {
+    return false;
+  }
+
+  for (int i = 0; i < comment->end_len; i += 1) {
+    if (tokens[offset + i]->vlen != 1) {
+      return false;
+    }
+    if (*(tokens[offset + i]->v) != comment->end[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void handle_comment(Token **tokens, int *offset, int tokens_count,
+                    const Comment *comment) {
+
+  if (tokens == NULL || offset == NULL || tokens_count == 0 ||
+      comment == NULL) {
+    return;
+  }
+
+  // NOTE: mark comment begin tokens
+  for (; *offset < comment->begin_len; *offset += 1) {
+    tokens[*offset]->t = TOKEN_COMMENT;
+  }
+
+  while (!is_comment_end(tokens, *offset, tokens_count, comment)) {
+    tokens[*offset]->t = TOKEN_COMMENT;
+    *offset += 1;
+  }
+
+  // NOTE: mark comment end tokens
+  for (; *offset < comment->end_len; *offset += 1) {
+    tokens[*offset]->t = TOKEN_COMMENT;
+  }
+}
+
 // tokenize takes in content, its length and tokenizer configuration
 // and produces tokens based on that, token count is returned through
 // tokens_count variable. allocs memory
@@ -277,50 +343,81 @@ Token **tokenize(char *contents, int contents_length,
   }
 
   // second round
-  for (int i = 0; i < *tokens_count; i += 1) {
-    if (0) {
+  for (int offset = 0; offset < *tokens_count; offset += 1) {
+
+    // KEYWORDS start
+
+    // CODE_KEYWORD start
+    for (int j = 0; tokenizer_config->code_keywords != NULL &&
+                    j < tokenizer_config->code_keywords_count;
+         j += 1) {
+      if (strcmp(tokens[offset]->v, tokenizer_config->code_keywords[j]) == 0) {
+        tokens[offset]->t = TOKEN_CODE_KEYWORD;
+        break;
+      }
+    }
+    // CODE_KEYWORD end
+
+    // COMMENT_KEYWORD start
+    for (int j = 0; tokenizer_config->comment_keywords != NULL &&
+                    j < tokenizer_config->comment_keywords_count;
+         j += 1) {
+      if (strcmp(tokens[offset]->v, tokenizer_config->comment_keywords[j]) ==
+          0) {
+        tokens[offset]->t = TOKEN_COMMENT_KEYWORD;
+        break;
+      }
+    }
+    // COMMENT_KEYWORD end
+    // KEYWORDS end
+
+    // NOTE: if it's not TOKEN_WORD, then we already parsed it,
+    // skip further processing
+    if (tokens[offset]->t != TOKEN_WORD) {
+      continue;
 
       // STRING start
-    } else if (tokens[i]->t == TOKEN_WORD && tokens[i]->vlen == 1 &&
-               (*tokens[i]->v == '\'' || *tokens[i]->v == '"')) {
-      char quote = *tokens[i]->v;
-      tokens[i]->t = TOKEN_STRING;
-      i += 1;
-      while (i < *tokens_count) {
+    } else if (tokens[offset]->vlen == 1 &&
+               (*tokens[offset]->v == '\'' || *tokens[offset]->v == '"')) {
+      char quote = *tokens[offset]->v;
+      tokens[offset]->t = TOKEN_STRING;
+      offset += 1;
+      while (offset < *tokens_count) {
 
-        if (tokens[i]->t == TOKEN_WORD) {
-          tokens[i]->t = TOKEN_STRING;
+        if (tokens[offset]->t == TOKEN_WORD) {
+          tokens[offset]->t = TOKEN_STRING;
         }
 
-        if (tokens[i]->vlen == 1 && *tokens[i]->v == quote &&
-            ((i - 1 > -1 &&
-              *tokens[i - 1]->v != '\\') || // NOTE: \\ before closing quote
-             (i - 2 > -1 && *tokens[i - 1]->v == '\\' &&
-              *tokens[i - 2]->v == '\\'))) { // NOTE: no \ before closing quote
+        if (tokens[offset]->vlen == 1 && *tokens[offset]->v == quote &&
+            ((offset - 1 > -1 && *tokens[offset - 1]->v !=
+                                     '\\') || // NOTE: \\ before closing quote
+             (offset - 2 > -1 && *tokens[offset - 1]->v == '\\' &&
+              *tokens[offset - 2]->v ==
+                  '\\'))) { // NOTE: no \ before closing quote
           break;
         }
-        i += 1;
+        offset += 1;
       }
       // STRING end
 
       // NUMBER start
-    } else if (tokens[i]->t == TOKEN_WORD && is_nr(tokens[i])) {
-      tokens[i]->t = TOKEN_NUMBER;
+    } else if (is_nr(tokens[offset])) {
+      tokens[offset]->t = TOKEN_NUMBER;
 
       // NOTE: check if negative
-      if (i - 1 > -1 && tokens[i - 1]->vlen == 1 &&
-          *(tokens[i - 1]->v) == '-') {
-        tokens[i - 1]->t = TOKEN_NUMBER;
+      if (offset - 1 > -1 && tokens[offset - 1]->vlen == 1 &&
+          *(tokens[offset - 1]->v) == '-') {
+        tokens[offset - 1]->t = TOKEN_NUMBER;
       }
 
       // NOTE: check if decimal
       // NOTE: also include 'nr.'-repeating (eg ip-addresses) as valid numbers
       while (true) {
-        if (i + 2 < *tokens_count && tokens[i + 1]->vlen == 1 &&
-            *(tokens[i + 1]->v) == '.' && is_nr(tokens[i + 2])) {
-          tokens[i + 1]->t = TOKEN_NUMBER;
-          tokens[i + 2]->t = TOKEN_NUMBER;
-          i += 2;
+        if (offset + 2 < *tokens_count && tokens[offset + 1]->vlen == 1 &&
+            *(tokens[offset + 1]->v) == '.' && is_nr(tokens[offset + 2])) {
+          tokens[offset + 1]->t = TOKEN_NUMBER;
+          tokens[offset + 2]->t = TOKEN_NUMBER;
+          offset += 2;
         } else {
           break;
         }
@@ -328,36 +425,14 @@ Token **tokenize(char *contents, int contents_length,
       // NUMBER end
 
       // LINE_COMMENT start
+    } else if (is_comment_start(tokens, offset, *tokens_count,
+                                tokenizer_config->line_comment)) {
+      handle_comment(tokens, &offset, *tokens_count,
+                     tokenizer_config->line_comment);
       // LINE_COMMENT end
 
       // BLOCK_COMMENT start
       // BLOCK_COMMENT end
-
-      // KEYWORDS start
-    } else if (tokens[i]->t == TOKEN_WORD) {
-
-      // CODE_KEYWORD start
-      for (int j = 0; tokenizer_config->code_keywords != NULL &&
-                      j < tokenizer_config->code_keywords_count;
-           j += 1) {
-        if (strcmp(tokens[i]->v, tokenizer_config->code_keywords[j]) == 0) {
-          tokens[i]->t = TOKEN_CODE_KEYWORD;
-          break;
-        }
-      }
-      // CODE_KEYWORD end
-
-      // COMMENT_KEYWORD start
-      for (int j = 0; tokenizer_config->comment_keywords != NULL &&
-                      j < tokenizer_config->comment_keywords_count;
-           j += 1) {
-        if (strcmp(tokens[i]->v, tokenizer_config->comment_keywords[j]) == 0) {
-          tokens[i]->t = TOKEN_COMMENT_KEYWORD;
-          break;
-        }
-      }
-      // COMMENT_KEYWORD end
-      // KEYWORDS end
 
       // END
     }
