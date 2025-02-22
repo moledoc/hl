@@ -585,8 +585,7 @@ Token **update_tokens(Token **tokens, char *contents, int contents_length,
   return tokenize(contents, contents_length, tokenizer_config, tokens_count);
 }
 
-// {
-#ifdef TESTING
+// -----------------------------------
 
 #define PRINT_BUFFER_SIZE 1024
 char *print_buffer =
@@ -605,5 +604,3 @@ void print_tokens(Token **tokens, int tokens_count) {
     printf("%s\n", print_buffer);
   }
 }
-#endif // TESTING
-       // }

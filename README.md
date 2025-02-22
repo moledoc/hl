@@ -44,7 +44,12 @@ Tool to put (colored) text on the screen.
 	- [ ] copy-paste highlighted text
 	- [ ] soft-wrap text
 	- [ ] UTF handling
-	- [ ] able to specify font or change it on the fly
+	- [ ] able to specify font
+		- [ ] cmd args 
+		- [ ] on the fly
+	- [ ] specify color schemes
+		- [ ] cmd args
+		- [ ] on the fly
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`

@@ -21,9 +21,12 @@ void help() {
   printf("\tMeelis Utt (meelis.utt@gmail.com)\n");
 }
 
+enum MODE { MODE_GUI = 0, MODE_TUI, MODE_TOKENS, MODE_COUNT };
+
 int main(int argc, char **argv) {
 
   char *filename = NULL;
+  enum MODE mode = MODE_GUI;
 
   for (int i = 1; i < argc; ++i) {
     char *flag = argv[i];
@@ -36,6 +39,10 @@ int main(int argc, char **argv) {
                strcmp("--version", flag) == 0) {
       printf("version: %s\n", VERSION);
       return 0;
+    } else if (strcmp("--tui", flag) == 0) {
+      mode = MODE_TUI;
+    } else if (strcmp("--tokens", flag) == 0) {
+      mode = MODE_TOKENS;
     } else if (i == argc - 1) {
       filename = flag;
     } else {
@@ -103,9 +110,23 @@ int main(int argc, char **argv) {
   Token **tokens =
       tokenize(contents, contents_len, tokenizer_config, &tokens_count);
 
-  // TODO: gui_loop
   int ret = 0;
-  ret = gui_loop(filename, tokenizer_config);
+  switch (mode) {
+  case MODE_GUI:
+    ret = gui_loop(filename, tokenizer_config);
+    break;
+  case MODE_TUI:
+    ret = tui_loop(filename, tokenizer_config);
+    break;
+  case MODE_TOKENS:
+    print_buffer = calloc(PRINT_BUFFER_SIZE, sizeof(char));
+    print_tokens(tokens, tokens_count);
+    if (print_buffer != NULL) {
+      free(print_buffer);
+    }
+  case MODE_COUNT:
+    break;
+  }
 
   if (ext != NULL) {
     free(ext);
