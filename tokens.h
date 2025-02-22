@@ -272,8 +272,18 @@ Token **tokenize(char *contents, int contents_length,
 
   // second round
   for (int i = 0; i < *tokens_count; i += 1) {
-
     if (0) {
+
+      // CODE_KEYWORD start
+    } else if (tokens[i]->t == TOKEN_WORD &&
+               tokenizer_config->code_keywords != NULL) {
+      for (int j = 0; j < tokenizer_config->code_keywords_count; j += 1) {
+        if (strcmp(tokens[i]->v, tokenizer_config->code_keywords[j]) == 0) {
+          tokens[i]->t = TOKEN_CODE_KEYWORD;
+          break;
+        }
+      }
+      // CODE_KEYWORD end
 
       // STRING start
     } else if (tokens[i]->t == TOKEN_WORD && tokens[i]->vlen == 1 &&
@@ -299,10 +309,8 @@ Token **tokenize(char *contents, int contents_length,
       // STRING end
 
       // NUMBER start
-    } else if (is_nr(tokens[i])) {
-      if (tokens[i]->t == TOKEN_WORD) {
-        tokens[i]->t = TOKEN_NUMBER;
-      }
+    } else if (tokens[i]->t == TOKEN_WORD && is_nr(tokens[i])) {
+      tokens[i]->t = TOKEN_NUMBER;
 
       // NOTE: check if negative
       if (i - 1 > -1 && tokens[i - 1]->vlen == 1 &&
@@ -322,20 +330,16 @@ Token **tokenize(char *contents, int contents_length,
           break;
         }
       }
+      // NUMBER end
+
+      // LINE_COMMENT start
+      // LINE_COMMENT end
+
+      // BLOCK_COMMENT start
+      // BLOCK_COMMENT end
+
+      // END
     }
-    // NUMBER end
-
-    // LINE_COMMENT start
-    // LINE_COMMENT end
-
-    // BLOCK_COMMENT start
-    // BLOCK_COMMENT end
-
-    // CODE_KEYWORD start
-    // CODE_KEYWORD end
-
-    // COMMENT_KEYWORD start
-    // COMMENT_KEYWORD end
   }
 
   // NOTE: if we dont end with newline token,
