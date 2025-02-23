@@ -47,13 +47,16 @@ typedef struct {
 } Texture;
 
 typedef struct {
+  int horizontal_offset;
+  int horizontal_lower_bound;
+  int horizontal_upper_bound;
+  //
   int vertical_offset;
   int vertical_lower_bound;
   int vertical_upper_bound;
   //
-  int horizontal_offset;
-  int horizontal_lower_bound;
-  int horizontal_upper_bound;
+  int horizontal_text;
+  int vertical_text;
 } Scroll;
 
 typedef struct {
@@ -145,11 +148,16 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
 
-  int max_horizontal = 0;
+  int max_horizontal_offset = 0;
 
   for (int i = 0; i < textures_count; i += 1) {
 
     if (textures[i]->is_newline) {
+      max_horizontal_offset =
+          (max_horizontal_offset >= local_horizontal_offset) *
+              max_horizontal_offset +
+          (max_horizontal_offset < local_horizontal_offset) *
+              local_horizontal_offset;
       local_horizontal_offset = 0;
       local_vertical_offset += textures[i]->h;
     } else {
@@ -161,21 +169,18 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
       SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
       local_horizontal_offset += textures[i]->w;
     }
-    max_horizontal = (max_horizontal >= textures[i]->w) * max_horizontal +
-                     (max_horizontal < textures[i]->w) * textures[i]->w;
   }
 
-  scroll->vertical_lower_bound = -local_vertical_offset;
-  scroll->vertical_upper_bound = 0;
-  scroll->horizontal_lower_bound = -max_horizontal;
-  scroll->horizontal_upper_bound = 0;
+  scroll->horizontal_text = max_horizontal_offset;
+  scroll->vertical_text = local_vertical_offset;
 
   return EXIT_SUCCESS;
 }
 
-int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
-                      TTF_Font *font, Texture **text_textures,
-                      int textures_count, Scroll *scroll, State *state) {
+int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
+                      SDL_Renderer *renderer, TTF_Font *font,
+                      Texture **text_textures, int textures_count,
+                      Scroll *scroll, State *state) {
 
   int event_count = 0;
   int err = 0;
@@ -219,20 +224,36 @@ int handle_sdl_events(SDL_Event sdl_event, SDL_Renderer *renderer,
       state->shift_pressed = false;
       // SHIFT END
 
-      // SCROLL VERTICAL/HORIZONTAL START
+      // SCROLL VERTICAL START
     } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.y != 0) {
       scroll->vertical_offset += VERTICAL_SCROLL_MULT * sdl_event.wheel.y;
+
+      scroll->vertical_lower_bound = -scroll->vertical_text;
+      scroll->vertical_upper_bound = 0;
+
       scroll->vertical_offset =
           clamp(scroll->vertical_offset, scroll->vertical_lower_bound,
                 scroll->vertical_upper_bound);
+      // SCROLL VERTICAL END
+
+      // SCROLL HORIZONTAL START
     } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.x != 0) {
       scroll->horizontal_offset += HORIZONTAL_SCROLL_MULT * sdl_event.wheel.x;
+
+      int w_width = 0;
+      SDL_GetWindowSizeInPixels(window, &w_width, NULL);
+      // NOTE: if lower_bound is 0, then no horizontal scrolling
+      // otherwise half max line_len amount scrolling
+      scroll->horizontal_lower_bound =
+          scroll->horizontal_text >= w_width ? -scroll->horizontal_text : 0;
+      scroll->horizontal_upper_bound = 0;
+
       scroll->horizontal_offset =
           clamp(scroll->horizontal_offset, scroll->horizontal_lower_bound,
                 scroll->horizontal_upper_bound);
-      // SCROLL VERTICAL/HORIZONTAL END
+      // SCROLL HORIZONTAL END
 
       // FONT RESIZE WITH MOUSEWHEEL START
     } else if (state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
@@ -362,7 +383,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
     SDL_Event sdl_event;
     handled_event_count =
-        handle_sdl_events(sdl_event, renderer, font, text_textures,
+        handle_sdl_events(window, sdl_event, renderer, font, text_textures,
                           textures_count, scroll, state);
     if (!state->keep_window_open) {
       break;

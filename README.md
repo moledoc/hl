@@ -37,8 +37,9 @@ Tool to put (colored) text on the screen.
 	- [x] keyword based highlighting in GUI
 		- [ ] multi-line strings are not properly handling newline chars
 	- [x] bounded horizontal/vertical scrolling
-		- [ ] extension: horizontal scrolling only when text doesn't fit the screen
-		- [ ] extension: able to specify scrolling factor
+		- [x] extension: horizontal scrolling only when text doesn't fit the screen
+		- [x] extension: able to specify scrolling factor
+		- [ ] extension: snap to view if no vertical scrolling, when already scrolled
 	- [ ] scrollbar (horizontal/vertical)
 	- [ ] ~~when font is resized, keep same place in view~~
 		- [x] smaller font increment instead
