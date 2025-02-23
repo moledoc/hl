@@ -24,7 +24,7 @@ void help() {
 }
 
 enum MODE { MODE_GUI = 0, MODE_TUI, MODE_TOKENS, MODE_COUNT };
-enum COLOR { COLOR_NOT_SET = 0, COLOR_YES = true, COLOR_NO = false };
+enum COLOR { COLOR_NOT_SET = -1, COLOR_NO = false, COLOR_YES = true };
 
 int main(int argc, char **argv) {
 
@@ -105,6 +105,9 @@ int main(int argc, char **argv) {
     tokenizer_config->code_keywords = c_keywords;
     tokenizer_config->code_keywords_count = C_KEYWORDS_COUNT;
     //
+    tokenizer_config->comment_keywords = comment_keywords;
+    tokenizer_config->comment_keywords_count = COMMENT_KEYWORDS_COUNT;
+    //
     tokenizer_config->color_code_keywords = true;
     tokenizer_config->color_comment_keywords = true;
     tokenizer_config->color_numbers = true;
@@ -117,6 +120,9 @@ int main(int argc, char **argv) {
     tokenizer_config->code_keywords = go_keywords;
     tokenizer_config->code_keywords_count = GO_KEYWORDS_COUNT;
     //
+    tokenizer_config->comment_keywords = comment_keywords;
+    tokenizer_config->comment_keywords_count = COMMENT_KEYWORDS_COUNT;
+    //
     tokenizer_config->color_code_keywords = true;
     tokenizer_config->color_comment_keywords = true;
     tokenizer_config->color_numbers = true;
@@ -127,6 +133,9 @@ int main(int argc, char **argv) {
     //
     tokenizer_config->code_keywords = py_keywords;
     tokenizer_config->code_keywords_count = PY_KEYWORDS_COUNT;
+    //
+    tokenizer_config->comment_keywords = comment_keywords;
+    tokenizer_config->comment_keywords_count = COMMENT_KEYWORDS_COUNT;
     //
     tokenizer_config->color_code_keywords = true;
     tokenizer_config->color_comment_keywords = true;
@@ -139,12 +148,18 @@ int main(int argc, char **argv) {
     tokenizer_config->code_keywords = md_keywords;
     tokenizer_config->code_keywords_count = MD_KEYWORDS_COUNT;
     //
+    tokenizer_config->comment_keywords = comment_keywords;
+    tokenizer_config->comment_keywords_count = COMMENT_KEYWORDS_COUNT;
+    //
     tokenizer_config->color_code_keywords = true;
     tokenizer_config->color_comment_keywords = true;
     tokenizer_config->color_numbers = true;
 
   } else if (strcmp(ext, "html") == 0) {
     tokenizer_config->block_comment = html_style_block_comment();
+    //
+    tokenizer_config->comment_keywords = comment_keywords;
+    tokenizer_config->comment_keywords_count = COMMENT_KEYWORDS_COUNT;
     //
     tokenizer_config->color_comment_keywords = true;
     tokenizer_config->color_numbers = true;

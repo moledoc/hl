@@ -325,7 +325,8 @@ Token **tokenize(char *contents, int contents_length,
   for (int offset = 0; offset < *tokens_count; offset += 1) {
 
     // CODE_KEYWORD start
-    if (tokenizer_config->color_code_keywords) {
+    if (tokenizer_config->color_code_keywords &&
+        tokens[offset]->t == TOKEN_WORD) {
       handle_keyword(tokens[offset], tokenizer_config->code_keywords,
                      tokenizer_config->code_keywords_count, TOKEN_CODE_KEYWORD);
     }
