@@ -8,11 +8,11 @@ dirs:
 
 record_all: dirs
 	clang -o ./bin/hl ./main.c -D_REENTRANT -lSDL2 -lSDL2_ttf
-	find tests/in -type f | parallel 'export filename=$$(basename {}) && test -n $${filename} && ./bin/hl --tokens {} > ./tests/golden/$${filename} && echo "recorded {} to ./tests/golden/$${filename} - done"'
+	find tests/in -type f | parallel 'export filename=$$(basename {}) && test -n $${filename} && ./bin/hl --tokens --color-numbers -f {} > ./tests/golden/$${filename} && echo "recorded {} to ./tests/golden/$${filename} - done"'
 
 test_out:
 	clang -o ./bin/hl ./main.c -D_REENTRANT -lSDL2 -lSDL2_ttf
-	for filename in $$(find tests/in -type f | parallel 'basename {}');do ./bin/hl --tokens ./tests/in/$${filename} > ./tests/out/$${filename}; done;
+	for filename in $$(find tests/in -type f | parallel 'basename {}');do ./bin/hl --tokens --color-numbers -f ./tests/in/$${filename} > ./tests/out/$${filename}; done;
 
 test: test_out
 	diff ./tests/golden ./tests/out
