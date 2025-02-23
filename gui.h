@@ -150,6 +150,10 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
 
   int max_horizontal_offset = 0;
 
+  int mouse_x = 0;
+  int mouse_y = 0;
+  (void)SDL_GetMouseState(&mouse_x, &mouse_y);
+
   for (int i = 0; i < textures_count; i += 1) {
 
     if (textures[i]->is_newline) {
@@ -161,6 +165,25 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
       local_horizontal_offset = 0;
       local_vertical_offset += textures[i]->h;
     } else {
+
+      int pos_x = HORIZONTAL_PADDING + local_horizontal_offset +
+                  scroll->horizontal_offset;
+      int pos_y =
+          VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
+
+      if (pos_x <= mouse_x && mouse_x <= pos_x + textures[i]->w &&
+          pos_y <= mouse_y && mouse_y <= pos_y + textures[i]->h) {
+        SDL_Rect highlight_rect = {pos_x, pos_y, textures[i]->w,
+                                   textures[i]->h};
+
+        SDL_Color prev = {0};
+        SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                               (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
+        SDL_RenderFillRect(renderer, &highlight_rect);
+        SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+      }
+
       SDL_Rect text_rect = {HORIZONTAL_PADDING + local_horizontal_offset +
                                 scroll->horizontal_offset,
                             VERTICAL_PADDING + local_vertical_offset +
