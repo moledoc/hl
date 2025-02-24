@@ -197,36 +197,38 @@ if (state->left_mouse_button_pressed &&
     mouse_y <= texture_start_height + textures[i]->h) {
         */
 
-        if (state->left_mouse_button_pressed &&
-            scroll->highlight_start_y != mouse_y &&
-            (
-                // down highlight start line
-                texture_start_height <= scroll->highlight_start_y &&
-                    scroll->highlight_start_y <=
-                        texture_start_height + textures[i]->h &&
-                    scroll->highlight_start_x <=
-                        texture_start_width + textures[i]->w
-                // down highlight end line
-                || scroll->highlight_start_y + textures[i]->h < mouse_y &&
-                       texture_start_height <= mouse_y &&
-                       mouse_y <= texture_start_height + textures[i]->h &&
-                       texture_start_width <= mouse_x
-                // down highlight middle
-                || scroll->highlight_start_y < texture_start_height &&
-                       texture_start_height < mouse_y - textures[i]->h
-                //
-                )
-            //
-        ) {
+        if (state->left_mouse_button_pressed) {
+          if (scroll->highlight_start_y < mouse_y &&
+              (
+                  // down highlight start line
+                  texture_start_height <= scroll->highlight_start_y &&
+                      scroll->highlight_start_y <=
+                          texture_start_height + textures[i]->h &&
+                      scroll->highlight_start_x <=
+                          texture_start_width + textures[i]->w
+                  // down highlight end line
+                  || scroll->highlight_start_y + textures[i]->h < mouse_y &&
+                         texture_start_height <= mouse_y &&
+                         mouse_y <= texture_start_height + textures[i]->h &&
+                         texture_start_width <= mouse_x
+                  // down highlight middle
+                  || scroll->highlight_start_y < texture_start_height &&
+                         texture_start_height < mouse_y - textures[i]->h
+                  //
+                  )
+              //
+          ) {
 
-          SDL_Rect highlight_rect = {texture_start_width, texture_start_height,
-                                     textures[i]->w, textures[i]->h};
-          SDL_Color prev = {0};
-          SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
-                                 (Uint8 *)&prev.b, (Uint8 *)&prev.a);
-          SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
-          SDL_RenderFillRect(renderer, &highlight_rect);
-          SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+            SDL_Rect highlight_rect = {texture_start_width,
+                                       texture_start_height, textures[i]->w,
+                                       textures[i]->h};
+            SDL_Color prev = {0};
+            SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                                   (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+            SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
+            SDL_RenderFillRect(renderer, &highlight_rect);
+            SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+          }
         }
 
         SDL_Rect text_rect = {texture_start_width, texture_start_height,
