@@ -183,18 +183,18 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
       int texture_start_height =
           VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
 
-      /*
-            // current token
-            if (state->left_mouse_button_pressed && pos_x <= mouse_x &&
-                mouse_x <= pos_x + textures[i]->w && pos_y <= mouse_y &&
-                mouse_y <= pos_y + textures[i]->h) {
-      */
-      if (state->left_mouse_button_pressed &&
-          (abs(scroll->vertical_offset) + highlight_start_y -
-                   highlight_start_y % textures[i]->h <=
-               local_vertical_offset &&
-           abs(scroll->vertical_offset) + local_vertical_offset <=
-               highlight_end_y - highlight_end_y % textures[i]->h)) {
+      // current token
+      if (state->left_mouse_button_pressed && texture_start_width <= mouse_x &&
+          mouse_x <= texture_start_width + textures[i]->w &&
+          texture_start_height <= mouse_y &&
+          mouse_y <= texture_start_height + textures[i]->h) {
+        /*
+        if (state->left_mouse_button_pressed &&
+            (highlight_start_y - highlight_start_y % textures[i]->h <=
+                 local_vertical_offset &&
+             local_vertical_offset <=
+                 highlight_end_y - highlight_end_y % textures[i]->h)) {
+        */
 
         SDL_Rect highlight_rect = {texture_start_width, texture_start_height,
                                    textures[i]->w, textures[i]->h};
