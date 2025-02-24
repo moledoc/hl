@@ -147,13 +147,18 @@ Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
                             textures_count);
 }
 
-int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
-                    int textures_count, Scroll *scroll, State *state) {
+int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
+                    Texture **textures, int textures_count, Scroll *scroll,
+                    State *state) {
 
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
 
   int max_horizontal_offset = 0;
+
+  int window_height = 0;
+  int window_width = 0;
+  (void)SDL_GetWindowSize(window, &window_width, &window_height);
 
   int mouse_x = 0;
   int mouse_y = 0;
@@ -173,9 +178,9 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
       local_vertical_offset += textures[i]->h;
     } else {
 
-      int pos_x = HORIZONTAL_PADDING + local_horizontal_offset +
-                  scroll->horizontal_offset;
-      int pos_y =
+      int texture_start_width = HORIZONTAL_PADDING + local_horizontal_offset +
+                                scroll->horizontal_offset;
+      int texture_start_height =
           VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
 
       /*
@@ -191,8 +196,8 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
            abs(scroll->vertical_offset) + local_vertical_offset <=
                highlight_end_y - highlight_end_y % textures[i]->h)) {
 
-        SDL_Rect highlight_rect = {pos_x, pos_y, textures[i]->w,
-                                   textures[i]->h};
+        SDL_Rect highlight_rect = {texture_start_width, texture_start_height,
+                                   textures[i]->w, textures[i]->h};
         SDL_Color prev = {0};
         SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                                (Uint8 *)&prev.b, (Uint8 *)&prev.a);
@@ -201,12 +206,14 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
         SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
       }
 
-      SDL_Rect text_rect = {HORIZONTAL_PADDING + local_horizontal_offset +
-                                scroll->horizontal_offset,
-                            VERTICAL_PADDING + local_vertical_offset +
-                                scroll->vertical_offset,
-                            textures[i]->w, textures[i]->h};
-      SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
+      // NOTE: only render what fits on screen
+      if (texture_start_height <= window_height &&
+          texture_start_width <= window_width) {
+        SDL_Rect text_rect = {texture_start_width, texture_start_height,
+                              textures[i]->w, textures[i]->h};
+        SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
+      }
+
       local_horizontal_offset += textures[i]->w;
     }
   }
@@ -344,8 +351,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     }
 
     SDL_RenderClear(renderer);
-    err =
-        cpy_to_renderer(renderer, text_textures, textures_count, scroll, state);
+    err = cpy_to_renderer(window, renderer, text_textures, textures_count,
+                          scroll, state);
     if (err != EXIT_SUCCESS) {
       state->keep_window_open = false;
       return event_count;
@@ -414,7 +421,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   State *state = calloc(1, sizeof(State));
 
   int err = EXIT_SUCCESS;
-  err = cpy_to_renderer(renderer, text_textures, textures_count, scroll, state);
+  err = cpy_to_renderer(window, renderer, text_textures, textures_count, scroll,
+                        state);
   if (err != EXIT_SUCCESS) {
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
@@ -455,8 +463,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
                                       tokens, tokens_count, &textures_count);
 
       SDL_RenderClear(renderer);
-      err = cpy_to_renderer(renderer, text_textures, textures_count, scroll,
-                            state);
+      err = cpy_to_renderer(window, renderer, text_textures, textures_count,
+                            scroll, state);
       if (err != EXIT_SUCCESS) {
         break;
       }
@@ -467,8 +475,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
                                       tokens, tokens_count, &textures_count);
 
       SDL_RenderClear(renderer);
-      err = cpy_to_renderer(renderer, text_textures, textures_count, scroll,
-                            state);
+      err = cpy_to_renderer(window, renderer, text_textures, textures_count,
+                            scroll, state);
       if (err != EXIT_SUCCESS) {
         break;
       }
