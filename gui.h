@@ -159,14 +159,16 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   int mouse_y = 0;
   (void)SDL_GetMouseState(&mouse_x, &mouse_y);
 
+  int highlight_start_y =
+      scroll->vertical_offset + cond(scroll->highlight_start_y, mouse_y);
+  int highlight_end_y =
+      scroll->vertical_offset + rev_cond(scroll->highlight_start_y, mouse_y);
+
   for (int i = 0; i < textures_count; i += 1) {
 
     if (textures[i]->is_newline) {
       max_horizontal_offset =
-          (max_horizontal_offset >= local_horizontal_offset) *
-              max_horizontal_offset +
-          (max_horizontal_offset < local_horizontal_offset) *
-              local_horizontal_offset;
+          gt(max_horizontal_offset, local_horizontal_offset);
       local_horizontal_offset = 0;
       local_vertical_offset += textures[i]->h;
     } else {
@@ -183,11 +185,11 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
                 mouse_y <= pos_y + textures[i]->h) {
       */
       if (state->left_mouse_button_pressed &&
-          (scroll->highlight_start_y - scroll->highlight_start_y % FONT_SIZE <=
-                   local_vertical_offset &&
-               local_vertical_offset <= mouse_y ||
-           mouse_y - mouse_y % FONT_SIZE <= local_vertical_offset &&
-               local_vertical_offset <= scroll->highlight_start_y)) {
+          (abs(scroll->vertical_offset) + highlight_start_y -
+                   highlight_start_y % textures[i]->h <=
+               local_vertical_offset &&
+           abs(scroll->vertical_offset) + local_vertical_offset <=
+               highlight_end_y - highlight_end_y % textures[i]->h)) {
 
         SDL_Rect highlight_rect = {pos_x, pos_y, textures[i]->w,
                                    textures[i]->h};

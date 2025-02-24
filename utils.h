@@ -7,3 +7,7 @@ int clamp(int target, int lower_bound, int upper_bound) {
          lower_bound * (target < lower_bound) +
          upper_bound * (upper_bound < target);
 }
+int cond(int a, int b) { return (a <= b) * a + (b < a) * b; }
+int rev_cond(int a, int b) { return (b <= a) * a + (a < b) * b; }
+int gt(int a, int b) { return (a >= b) * a + (a < b) * b; }
+int lt(int a, int b) { return (a <= b) * a + (a > b) * b; }
