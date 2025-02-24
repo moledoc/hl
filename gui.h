@@ -168,6 +168,7 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
       scroll->vertical_offset + cond(scroll->highlight_start_y, mouse_y);
   int highlight_end_y =
       scroll->vertical_offset + rev_cond(scroll->highlight_start_y, mouse_y);
+  int sgn = sign(scroll->highlight_start_y - mouse_y);
 
   for (int i = 0; i < textures_count; i += 1) {
 
@@ -183,32 +184,48 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
       int texture_start_height =
           VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
 
-      // current token
-      if (state->left_mouse_button_pressed && texture_start_width <= mouse_x &&
-          mouse_x <= texture_start_width + textures[i]->w &&
-          texture_start_height <= mouse_y &&
-          mouse_y <= texture_start_height + textures[i]->h) {
-        /*
-        if (state->left_mouse_button_pressed &&
-            (highlight_start_y - highlight_start_y % textures[i]->h <=
-                 local_vertical_offset &&
-             local_vertical_offset <=
-                 highlight_end_y - highlight_end_y % textures[i]->h)) {
-        */
-
-        SDL_Rect highlight_rect = {texture_start_width, texture_start_height,
-                                   textures[i]->w, textures[i]->h};
-        SDL_Color prev = {0};
-        SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
-                               (Uint8 *)&prev.b, (Uint8 *)&prev.a);
-        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
-        SDL_RenderFillRect(renderer, &highlight_rect);
-        SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
-      }
-
       // NOTE: only render what fits on screen
       if (texture_start_height <= window_height &&
           texture_start_width <= window_width) {
+
+        /*
+// current token
+if (state->left_mouse_button_pressed &&
+    texture_start_width <= mouse_x &&
+    mouse_x <= texture_start_width + textures[i]->w &&
+    texture_start_height <= mouse_y &&
+    mouse_y <= texture_start_height + textures[i]->h) {
+        */
+
+        if (state->left_mouse_button_pressed &&
+            (
+                // down highlight start line
+                texture_start_height <= scroll->highlight_start_y &&
+                    scroll->highlight_start_y <=
+                        texture_start_height + textures[i]->h &&
+                    scroll->highlight_start_x <=
+                        texture_start_width + textures[i]->w
+                /*
+                                // down highlight end line
+                                || texture_start_height <= mouse_y &&
+                                       mouse_y <= texture_start_height +
+                   textures[i]->h && texture_start_width <= mouse_x
+                */
+                // down highlight middle
+                || scroll->highlight_start_y <= texture_start_height &&
+                       texture_start_height <= mouse_y
+                //
+                )) {
+          SDL_Rect highlight_rect = {texture_start_width, texture_start_height,
+                                     textures[i]->w, textures[i]->h};
+          SDL_Color prev = {0};
+          SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                                 (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+          SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
+          SDL_RenderFillRect(renderer, &highlight_rect);
+          SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+        }
+
         SDL_Rect text_rect = {texture_start_width, texture_start_height,
                               textures[i]->w, textures[i]->h};
         SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
