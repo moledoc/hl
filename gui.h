@@ -183,9 +183,10 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
                 mouse_y <= pos_y + textures[i]->h) {
       */
       if (state->left_mouse_button_pressed &&
-          (scroll->highlight_start_y <= local_vertical_offset &&
+          (scroll->highlight_start_y - scroll->highlight_start_y % FONT_SIZE <=
+                   local_vertical_offset &&
                local_vertical_offset <= mouse_y ||
-           mouse_y <= local_vertical_offset &&
+           mouse_y - mouse_y % FONT_SIZE <= local_vertical_offset &&
                local_vertical_offset <= scroll->highlight_start_y)) {
 
         SDL_Rect highlight_rect = {pos_x, pos_y, textures[i]->w,
