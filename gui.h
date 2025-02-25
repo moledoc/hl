@@ -217,11 +217,13 @@ if (state->left_mouse_button_pressed &&
                mouse_x <= texture_start_width + textures[i]->w &&
                    texture_start_width + textures[i]->h <=
                        scroll->highlight_start_x)) {
+
             // highlighting on the spot
             if (scroll->highlight_start_x == mouse_x) {
               highlight_on_spot = textures[i]->w;
             }
 
+            // highlight_start_offset_down
             if (scroll->highlight_start_x < mouse_x &&
                 texture_start_width <= scroll->highlight_start_x &&
                 scroll->highlight_start_x <=
@@ -232,6 +234,7 @@ if (state->left_mouse_button_pressed &&
                        texture_char_size);
             }
 
+            // highlight_end_offset_down
             if (scroll->highlight_start_x < mouse_x &&
                 texture_start_width <= mouse_x &&
                 mouse_x <= texture_start_width + textures[i]->w) {
@@ -241,6 +244,7 @@ if (state->left_mouse_button_pressed &&
                        texture_char_size);
             }
 
+            // highlight_start_offset_up
             if (scroll->highlight_start_x > mouse_x &&
                 texture_start_width <= mouse_x &&
                 mouse_x <= texture_start_width + textures[i]->w) {
@@ -249,7 +253,11 @@ if (state->left_mouse_button_pressed &&
                    (mouse_x - texture_start_width) % texture_char_size);
             }
 
+            // highlight_down_offset_up
+            // if not upwards, skip
             if (!(scroll->highlight_start_x > mouse_x)) {
+              // if not upwards, skip
+
               // insides the same word as start point
             } else if (texture_start_width <= mouse_x &&
                        scroll->highlight_start_x <
@@ -321,15 +329,53 @@ if (state->left_mouse_button_pressed &&
                          )
                      //
           ) {
-            SDL_Rect highlight_rect = {texture_start_width,
-                                       texture_start_height, textures[i]->w,
-                                       textures[i]->h};
+
+            // highlighting on the spot
+            if (scroll->highlight_start_x == mouse_x) {
+              highlight_on_spot = textures[i]->w;
+            }
+
+            // highlight_start_offset_down
+            // do char-based match on the token that is start on start line
+            if (texture_start_width <= scroll->highlight_start_x &&
+                scroll->highlight_start_x <=
+                    texture_start_width + textures[i]->w &&
+                texture_start_height <= scroll->highlight_start_y &&
+                scroll->highlight_start_y <
+                    texture_start_height + textures[i]->h) {
+              highlight_start_offset_down =
+                  ((scroll->highlight_start_x - texture_start_width) -
+                   (scroll->highlight_start_x - texture_start_width) %
+                       texture_char_size);
+            }
+
+            // highlight_end_offset_down
+            // do char-based match on the token that is start on start line
+            if (mouse_x <= texture_start_width + textures[i]->w &&
+                texture_start_height <= mouse_y &&
+                mouse_y < texture_start_height + textures[i]->h) {
+              highlight_end_offset_down =
+                  ((texture_start_width + textures[i]->w - mouse_x) -
+                   (texture_start_width + textures[i]->w - mouse_x) %
+                       texture_char_size);
+            }
+
+            SDL_Rect highlight_rect = {
+                texture_start_width + highlight_start_offset_down +
+                    highlight_start_offset_up,
+                texture_start_height,
+                textures[i]->w - highlight_start_offset_down -
+                    highlight_end_offset_down - highlight_end_offset_up -
+                    highlight_on_spot,
+                textures[i]->h};
             SDL_Color prev = {0};
             SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                                    (Uint8 *)&prev.b, (Uint8 *)&prev.a);
             SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
             SDL_RenderFillRect(renderer, &highlight_rect);
             SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+
+            // highlight down
           }
 
           // highlight up
