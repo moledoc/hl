@@ -58,9 +58,8 @@ typedef struct {
   int horizontal_text;
   int vertical_text;
   //
-  // MAYBE: temporary
-  int highlight_start_width;
-  int highlight_start_height;
+  int highlight_start_x;
+  int highlight_start_y;
 } Scroll;
 
 typedef struct {
@@ -135,6 +134,8 @@ void free_textures(Texture **textures, int textures_count) {
   }
 }
 
+// FIXME: if you go up from longer to shorter line from starting line
+// then there is like a pixel where upper line is highlighted, but shouldn't be
 void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                             Texture **textures, int textures_count,
                             Scroll *scroll, State *state) {
@@ -153,32 +154,29 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
   int mouse_y = 0;
   (void)SDL_GetMouseState(&mouse_x, &mouse_y);
 
-  int highlight_start_width = scroll->highlight_start_width;
-  int highlight_start_height = scroll->highlight_start_height;
-  int highlight_end_width = mouse_x;
-  int highlight_end_height = mouse_y;
+  int highlight_start_x = scroll->highlight_start_x;
+  int highlight_start_y = scroll->highlight_start_y;
+  int highlight_end_x = mouse_x;
+  int highlight_end_y = mouse_y;
 
   // mouse is higher than starting point
-  if (mouse_y <= scroll->highlight_start_height) {
-    highlight_end_height = scroll->highlight_start_height;
-    highlight_start_height = mouse_y;
-    highlight_end_width = scroll->highlight_start_width;
-    highlight_start_width = mouse_x;
+  if (mouse_y <= scroll->highlight_start_y) {
+    highlight_end_y = scroll->highlight_start_y;
+    highlight_start_y = mouse_y;
+    highlight_end_x = scroll->highlight_start_x;
+    highlight_start_x = mouse_x;
   }
+
+  int abs_mouse_height_diff = abs(mouse_y - scroll->highlight_start_y);
 
   // starting and end is on the same line
   // to avoid glitches on top-right and bottow-left on the line,
   // assign starting with min and ending with max vals.
-  // why: mentioned areas will be out-of-highlight zone technically otherwise
-  if (abs(mouse_y - scroll->highlight_start_height) <= FONT_SIZE) {
-    highlight_start_height = min(scroll->highlight_start_height, mouse_y);
-    highlight_start_width = min(scroll->highlight_start_width, mouse_x);
-    highlight_end_height = max(scroll->highlight_start_height, mouse_y);
-    highlight_end_width = max(scroll->highlight_start_width, mouse_x);
+  // why: mentioned areas will otherwise be out-of-highlight zone technically
+  if (abs_mouse_height_diff < FONT_SIZE) {
+    highlight_start_x = min(scroll->highlight_start_x, mouse_x);
+    highlight_end_x = max(scroll->highlight_start_x, mouse_x);
   }
-
-  // FIXME: when start and end height are same, widths different,
-  // then highlights many lines above instead
 
   // mouse-highlighting
   for (int i = 0; i < textures_count; i += 1) {
@@ -207,38 +205,40 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     bool highlight = false;
 
     // highlight rows
-    if (highlight_start_height < texture_start_height + textures[i]->h &&
-        texture_start_height < highlight_end_height) {
+    if (highlight_start_y < texture_start_height + textures[i]->h &&
+        texture_start_height < highlight_end_y) {
       highlight = true;
     }
     // don't highlight beginning row before mouse
-    if (texture_start_height < highlight_start_height &&
-        highlight_start_height < texture_start_height + textures[i]->h &&
-        texture_start_width + textures[i]->w < highlight_start_width) {
+    if (texture_start_height < highlight_start_y &&
+        highlight_start_y < texture_start_height + textures[i]->h &&
+        texture_start_width + textures[i]->w < highlight_start_x) {
       highlight = false;
     }
     // don't highlight ending row after mouse
-    if (texture_start_height < highlight_end_height &&
-        highlight_end_height < texture_start_height + textures[i]->h &&
-        highlight_end_width < texture_start_width) {
+    if (texture_start_height < highlight_end_y &&
+        highlight_end_y < texture_start_height + textures[i]->h &&
+        highlight_end_x < texture_start_width) {
       highlight = false;
     }
     // char-based highlighting on beginning token
-    if (texture_start_height < highlight_start_height &&
-        highlight_start_height < texture_start_height + textures[i]->h &&
-        highlight_start_width < texture_start_width + textures[i]->w) {
+    if (texture_start_height < highlight_start_y &&
+        highlight_start_y < texture_start_height + textures[i]->h &&
+        highlight_start_x < texture_start_width + textures[i]->w) {
       highlight_start_offset =
-          (highlight_start_width - texture_start_width) -
-          (highlight_start_width - texture_start_width) % texture_char_size;
+          ((highlight_start_x - texture_start_width) -
+           (highlight_start_x - texture_start_width) % texture_char_size) %
+          textures[i]->w;
     }
     // char-based highlighting on ending token
-    if (texture_start_height < highlight_end_height &&
-        highlight_end_height < texture_start_height + textures[i]->h &&
-        texture_start_width < highlight_end_width) {
+    if (texture_start_height < highlight_end_y &&
+        highlight_end_y < texture_start_height + textures[i]->h &&
+        texture_start_width < highlight_end_x) {
       hightlight_end_offset =
-          (texture_start_width + textures[i]->w - highlight_end_width) -
-          (texture_start_width + textures[i]->w - highlight_end_width) %
-              texture_char_size;
+          ((texture_start_width + textures[i]->w - highlight_end_x) -
+           (texture_start_width + textures[i]->w - highlight_end_x) %
+               texture_char_size) %
+          textures[i]->w;
     }
 
     if (highlight) {
@@ -373,8 +373,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.button.button == SDL_BUTTON_LEFT &&
                sdl_event.button.state == SDL_PRESSED) {
       state->left_mouse_button_pressed = true;
-      (void)SDL_GetMouseState(&scroll->highlight_start_width,
-                              &scroll->highlight_start_height);
+      (void)SDL_GetMouseState(&scroll->highlight_start_x,
+                              &scroll->highlight_start_y);
     } else if (sdl_event.type == SDL_MOUSEBUTTONUP &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
                sdl_event.button.state == SDL_RELEASED) {
