@@ -198,6 +198,13 @@ if (state->left_mouse_button_pressed &&
         */
 
         if (state->left_mouse_button_pressed) {
+          int texture_char_size = textures[i]->w / textures[i]->token->vlen;
+          int highlight_start_offset_down = 0;
+          int highlight_end_offset_down = 0;
+          int highlight_start_offset_up = 0;
+          int highlight_end_offset_up = 0;
+          int highlight_on_spot = 0;
+
           // highlight the same line
           if ((scroll->highlight_start_x != mouse_x) &&
               abs(scroll->highlight_start_y - mouse_y) < textures[i]->h &&
@@ -210,35 +217,38 @@ if (state->left_mouse_button_pressed &&
                mouse_x <= texture_start_width + textures[i]->w &&
                    texture_start_width + textures[i]->h <=
                        scroll->highlight_start_x)) {
+            // highlighting on the spot
+            if (scroll->highlight_start_x == mouse_x) {
+              highlight_on_spot = textures[i]->w;
+            }
 
-            // TODO: check condition whether they should be inclusive or not
-            // currently sometimes grabbing too much on the boarders of tokens
-            int texture_char_size = textures[i]->w / textures[i]->token->vlen;
-            int highlight_start_offset_down =
-                (scroll->highlight_start_x < mouse_x) *
-                (texture_start_width <= scroll->highlight_start_x &&
-                 scroll->highlight_start_x <=
-                     texture_start_width + textures[i]->w) *
-                ((scroll->highlight_start_x - texture_start_width) -
-                 (scroll->highlight_start_x - texture_start_width) %
-                     texture_char_size);
+            if (scroll->highlight_start_x < mouse_x &&
+                texture_start_width <= scroll->highlight_start_x &&
+                scroll->highlight_start_x <=
+                    texture_start_width + textures[i]->w) {
+              highlight_start_offset_down =
+                  ((scroll->highlight_start_x - texture_start_width) -
+                   (scroll->highlight_start_x - texture_start_width) %
+                       texture_char_size);
+            }
 
-            int highlight_end_offset_down =
-                (scroll->highlight_start_x < mouse_x) *
-                (texture_start_width <= mouse_x &&
-                 mouse_x <= texture_start_width + textures[i]->w) *
-                ((texture_start_width + textures[i]->w - mouse_x) -
-                 (texture_start_width + textures[i]->w - mouse_x) %
-                     texture_char_size);
+            if (scroll->highlight_start_x < mouse_x &&
+                texture_start_width <= mouse_x &&
+                mouse_x <= texture_start_width + textures[i]->w) {
+              highlight_end_offset_down =
+                  ((texture_start_width + textures[i]->w - mouse_x) -
+                   (texture_start_width + textures[i]->w - mouse_x) %
+                       texture_char_size);
+            }
 
-            int highlight_start_offset_up =
-                (scroll->highlight_start_x > mouse_x) *
-                (texture_start_width <= mouse_x &&
-                 mouse_x <= texture_start_width + textures[i]->w) *
-                ((mouse_x - texture_start_width) -
-                 (mouse_x - texture_start_width) % texture_char_size);
+            if (scroll->highlight_start_x > mouse_x &&
+                texture_start_width <= mouse_x &&
+                mouse_x <= texture_start_width + textures[i]->w) {
+              highlight_start_offset_up =
+                  ((mouse_x - texture_start_width) -
+                   (mouse_x - texture_start_width) % texture_char_size);
+            }
 
-            int highlight_end_offset_up = 0;
             if (!(scroll->highlight_start_x > mouse_x)) {
               // insides the same word as start point
             } else if (texture_start_width <= mouse_x &&
@@ -271,25 +281,6 @@ if (state->left_mouse_button_pressed &&
                                          scroll->highlight_start_x) %
                                             texture_char_size;
             }
-
-            /*
-                            (scroll->highlight_start_x > mouse_x) *
-                            ((scroll->highlight_start_x - mouse_x >=
-               textures[i]->w) *
-                                 ((texture_start_width + textures[i]->w -
-                                   scroll->highlight_start_x) -
-                                  (texture_start_width + textures[i]->w -
-                                   scroll->highlight_start_x) %
-                                      texture_char_size) +
-                             (scroll->highlight_start_x - mouse_x <
-               textures[i]->w) * (scroll->highlight_start_x - mouse_x -
-                                  (scroll->highlight_start_x - mouse_x) %
-               texture_char_size)
-                            );
-            */
-
-            int highlight_on_spot =
-                (scroll->highlight_start_x == mouse_x) * textures[i]->w;
 
             SDL_Rect highlight_rect = {
                 texture_start_width + highlight_start_offset_down +
