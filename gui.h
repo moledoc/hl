@@ -138,11 +138,12 @@ void free_textures(Texture **textures, int textures_count) {
 void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                             Texture **textures, int textures_count,
                             Scroll *scroll, State *state) {
+  if (!state->left_mouse_button_pressed) {
+    return;
+  }
 
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
-
-  int max_horizontal_offset = 0;
 
   int window_height = 0;
   int window_width = 0;
@@ -166,7 +167,9 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
   }
 
   // starting and end is on the same line
-  // to avoid glitches, assign starting with min and ending with max vals
+  // to avoid glitches on top-right and bottow-left on the line,
+  // assign starting with min and ending with max vals.
+  // why: mentioned areas will be out-of-highlight zone technically otherwise
   if (abs(mouse_y - scroll->highlight_start_height) <= FONT_SIZE) {
     highlight_start_height = min(scroll->highlight_start_height, mouse_y);
     highlight_start_width = min(scroll->highlight_start_width, mouse_x);
@@ -174,12 +177,12 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     highlight_end_width = max(scroll->highlight_start_width, mouse_x);
   }
 
+  // FIXME: when start and end height are same, widths different,
+  // then highlights many lines above instead
+
   // mouse-highlighting
-  for (int i = 0; state->left_mouse_button_pressed && i < textures_count;
-       i += 1) {
+  for (int i = 0; i < textures_count; i += 1) {
     if (textures[i]->token->t == TOKEN_NEWLINE) {
-      max_horizontal_offset =
-          gt(max_horizontal_offset, local_horizontal_offset);
       local_horizontal_offset = 0;
       local_vertical_offset += textures[i]->h;
       continue;
@@ -189,6 +192,13 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                               scroll->horizontal_offset;
     int texture_start_height =
         VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
+
+    // NOTE: only render what fits on screen
+    if (!(texture_start_height <= window_height &&
+          texture_start_width <= window_width)) {
+      local_horizontal_offset += textures[i]->w;
+      continue;
+    }
 
     int texture_char_size = textures[i]->w / textures[i]->token->vlen;
     int highlight_start_offset = 0;
@@ -292,13 +302,15 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
         VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
 
     // NOTE: only render what fits on screen
-    if (texture_start_height <= window_height &&
-        texture_start_width <= window_width) {
-
-      SDL_Rect text_rect = {texture_start_width, texture_start_height,
-                            textures[i]->w, textures[i]->h};
-      SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
+    if (!(texture_start_height <= window_height &&
+          texture_start_width <= window_width)) {
+      local_horizontal_offset += textures[i]->w;
+      continue;
     }
+
+    SDL_Rect text_rect = {texture_start_width, texture_start_height,
+                          textures[i]->w, textures[i]->h};
+    SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
 
     local_horizontal_offset += textures[i]->w;
   }
