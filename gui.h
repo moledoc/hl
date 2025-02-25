@@ -241,13 +241,16 @@ if (state->left_mouse_button_pressed &&
             int highlight_end_offset_up = 0;
             if (!(scroll->highlight_start_x > mouse_x)) {
               // insides the same word as start point
-              // TODO: make smoother, sometimes jumps around a bit
             } else if (texture_start_width <= mouse_x &&
                        scroll->highlight_start_x <
                            texture_start_width + textures[i]->w) {
               highlight_end_offset_up =
-                  (textures[i]->w - scroll->highlight_start_x + mouse_x) -
-                  (textures[i]->w - scroll->highlight_start_x + mouse_x) %
+                  (mouse_x - texture_start_width) -
+                  (mouse_x - texture_start_width) % texture_char_size +
+                  (texture_start_width + textures[i]->w -
+                   scroll->highlight_start_x) -
+                  (texture_start_width + textures[i]->w -
+                   scroll->highlight_start_x) %
                       texture_char_size;
               // mouse outside start point, is not end of highlight
             } else if (texture_start_width <= mouse_x &&
