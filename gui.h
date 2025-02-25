@@ -216,8 +216,35 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
       continue;
     }
 
-    SDL_Rect highlight_rect = {texture_start_width, texture_start_height,
-                               textures[i]->w, textures[i]->h};
+    int texture_char_size = textures[i]->w / textures[i]->token->vlen;
+
+    // highlighting start
+    int highlight_start_offset = 0;
+    if (texture_start_height <= highlight_start_height &&
+        highlight_start_height <= texture_start_height + textures[i]->h &&
+        texture_start_width <= highlight_start_width &&
+        highlight_start_width <= texture_start_width + textures[i]->w) {
+      highlight_start_offset =
+          (highlight_start_width - texture_start_width) -
+          (highlight_start_width - texture_start_width) % texture_char_size;
+    }
+    // highlighting end
+    int hightlight_end_offset = 0;
+    if (texture_start_height <= highlight_end_height &&
+        highlight_end_height <= texture_start_height + textures[i]->h &&
+        texture_start_width <= highlight_end_width &&
+        highlight_end_width <= texture_start_width + textures[i]->w) {
+      hightlight_end_offset =
+          (texture_start_width + textures[i]->w - highlight_end_width) -
+          (texture_start_width + textures[i]->w - highlight_end_width) %
+              texture_char_size;
+    }
+
+    int offset = highlight_start_offset - hightlight_end_offset;
+    SDL_Rect highlight_rect = {
+        texture_start_width + (highlight_start_offset), texture_start_height,
+        textures[i]->w - (highlight_start_offset + hightlight_end_offset),
+        textures[i]->h};
     SDL_Color prev = {0};
     SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                            (Uint8 *)&prev.b, (Uint8 *)&prev.a);
