@@ -136,9 +136,9 @@ void free_textures(Texture **textures, int textures_count) {
 
 // FIXME: if you go up from longer to shorter line from starting line
 // then there is like a pixel where upper line is highlighted, but shouldn't be
-void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
-                            Texture **textures, int textures_count,
-                            Scroll *scroll, State *state) {
+void handle_mouse_highlight2(SDL_Window *window, SDL_Renderer *renderer,
+                             Texture **textures, int textures_count,
+                             Scroll *scroll, State *state) {
   if (!state->left_mouse_button_pressed) {
     return;
   }
@@ -256,6 +256,141 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     }
 
     local_horizontal_offset += textures[i]->w;
+  }
+}
+
+void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
+                            Texture **textures, int textures_count,
+                            Scroll *scroll, State *state) {
+  if (!state->left_mouse_button_pressed) {
+    return;
+  }
+
+  int start_idx = 0;
+  int end_idx = 0;
+
+  int start_idx_offset_w = 0;
+  int start_idx_offset_h = 0;
+
+  int local_horizontal_offset = 0;
+  int local_vertical_offset = 0;
+
+  int window_height = 0;
+  int window_width = 0;
+  (void)SDL_GetWindowSize(window, &window_width, &window_height);
+
+  int mouse_x = 0;
+  int mouse_y = 0;
+  (void)SDL_GetMouseState(&mouse_x, &mouse_y);
+
+  int highlight_start_x = scroll->highlight_start_x;
+  int highlight_start_y = scroll->highlight_start_y;
+  int highlight_end_x = mouse_x;
+  int highlight_end_y = mouse_y;
+
+  // mouse is higher than starting point
+  if (mouse_y <= scroll->highlight_start_y) {
+    highlight_end_y = scroll->highlight_start_y;
+    highlight_start_y = mouse_y;
+    highlight_end_x = scroll->highlight_start_x;
+    highlight_start_x = mouse_x;
+  }
+
+  // mouse-highlighting
+  for (int i = 0; i < textures_count; i += 1) {
+
+    int texture_start_width = HORIZONTAL_PADDING + local_horizontal_offset +
+                              scroll->horizontal_offset;
+    int texture_start_height =
+        VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
+
+    if (texture_start_height <= highlight_start_y &&
+        highlight_start_y < texture_start_height + textures[i]->h &&
+        texture_start_width < highlight_start_x &&
+        highlight_start_x < texture_start_width + textures[i]->w) {
+      start_idx = i;
+      start_idx_offset_w = local_horizontal_offset;
+      start_idx_offset_h = local_vertical_offset;
+    }
+    if (texture_start_height <= highlight_end_y &&
+        highlight_end_y < texture_start_height + textures[i]->h &&
+        texture_start_width < highlight_end_x &&
+        highlight_end_x < texture_start_width + textures[i]->w) {
+      end_idx = i;
+    }
+
+    // FIXME: no start_idx/end_idx set on newline
+    // when past the newline texture width
+    if (textures[i]->token->t == TOKEN_NEWLINE) {
+      printf("HERE: %d %d %d %d %d %d\n", texture_start_width,
+             texture_start_width + textures[i]->w, highlight_end_x,
+             texture_start_height, texture_start_height + textures[i]->h,
+             highlight_end_y);
+      local_horizontal_offset = 0;
+      local_vertical_offset += textures[i]->h;
+      continue;
+    }
+
+    // NOTE: only render what fits on screen
+    if (!(texture_start_height <= window_height &&
+          texture_start_width <= window_width)) {
+      local_horizontal_offset += textures[i]->w;
+      continue;
+    }
+
+    local_horizontal_offset += textures[i]->w;
+  }
+
+  if (end_idx < start_idx) {
+    int tmp = end_idx;
+    end_idx = start_idx;
+    start_idx = tmp;
+  }
+  // printf("HERE: %d %d %s %s\n", start_idx, end_idx,
+  //        textures[start_idx]->token->v, textures[end_idx]->token->v);
+
+  for (int i = start_idx; i <= end_idx; i += 1) {
+    if (textures[i]->token->t == TOKEN_NEWLINE) {
+      start_idx_offset_w = 0;
+      start_idx_offset_h += textures[i]->h;
+      continue;
+    }
+
+    int texture_start_width =
+        HORIZONTAL_PADDING + start_idx_offset_w + scroll->horizontal_offset;
+    int texture_start_height =
+        VERTICAL_PADDING + start_idx_offset_h + scroll->vertical_offset;
+    int texture_char_size = textures[i]->w / textures[i]->token->vlen;
+    int highlight_start_offset = 0;
+    int hightlight_end_offset = 0;
+
+    if (i == start_idx) {
+      highlight_start_offset =
+          ((highlight_start_x - texture_start_width) -
+           (highlight_start_x - texture_start_width) % texture_char_size) %
+          textures[i]->w;
+    }
+    if (i == end_idx) {
+      hightlight_end_offset =
+          ((texture_start_width + textures[i]->w - highlight_end_x) -
+           (texture_start_width + textures[i]->w - highlight_end_x) %
+               texture_char_size) %
+          textures[i]->w;
+    }
+
+    SDL_Rect highlight_rect = {
+        texture_start_width + highlight_start_offset, texture_start_height,
+        textures[i]->w - (highlight_start_offset + hightlight_end_offset),
+        textures[i]->h};
+    SDL_Color prev = {0};
+    SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                           (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+    SDL_SetRenderDrawColor(renderer, MOUSE_HIGHLIGHT.r, MOUSE_HIGHLIGHT.g,
+                           MOUSE_HIGHLIGHT.b, MOUSE_HIGHLIGHT.a);
+    SDL_RenderFillRect(renderer, &highlight_rect);
+    SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+
+    start_idx_offset_w += textures[i]->w;
   }
 }
 
