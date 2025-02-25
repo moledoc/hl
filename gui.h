@@ -168,11 +168,12 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
   int highlight_start_height = scroll->highlight_start_height;
   int highlight_end_width = mouse_x;
   int highlight_end_height = mouse_y;
+
   if (mouse_y < scroll->highlight_start_height) {
-    highlight_end_width = scroll->highlight_start_width;
     highlight_end_height = scroll->highlight_start_height;
-    highlight_start_width = mouse_x;
     highlight_start_height = mouse_y;
+    highlight_end_width = scroll->highlight_start_width;
+    highlight_start_width = mouse_x;
   }
 
   // mouse-highlighting
@@ -191,50 +192,49 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
                               scroll->horizontal_offset;
     int texture_start_height =
         VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
+
     int texture_char_size = textures[i]->w / textures[i]->token->vlen;
     int highlight_start_offset = 0;
     int hightlight_end_offset = 0;
 
-    // find lines that contain highlighted area
-    if (highlight_start_height <= texture_start_height + textures[i]->h &&
+    bool highlight = false;
+
+    // highlight rows
+    if (highlight_start_height < texture_start_height + textures[i]->h &&
         texture_start_height < highlight_end_height) {
+      highlight = true;
+    }
+    // don't highlight beginning row before mouse
+    if (texture_start_height < highlight_start_height &&
+        highlight_start_height < texture_start_height + textures[i]->h &&
+        texture_start_width + textures[i]->w < highlight_start_width) {
+      highlight = false;
+    }
+    // don't highlight ending row after mouse
+    if (texture_start_height < highlight_end_height &&
+        highlight_end_height < texture_start_height + textures[i]->h &&
+        highlight_end_width < texture_start_width) {
+      highlight = false;
+    }
+    // char-based highlighting on beginning token
+    if (texture_start_height < highlight_start_height &&
+        highlight_start_height < texture_start_height + textures[i]->h &&
+        highlight_start_width < texture_start_width + textures[i]->w) {
+      highlight_start_offset =
+          (highlight_start_width - texture_start_width) -
+          (highlight_start_width - texture_start_width) % texture_char_size;
+    }
+    // char-based highlighting on ending token
+    if (texture_start_height < highlight_end_height &&
+        highlight_end_height < texture_start_height + textures[i]->h &&
+        texture_start_width < highlight_end_width) {
+      hightlight_end_offset =
+          (texture_start_width + textures[i]->w - highlight_end_width) -
+          (texture_start_width + textures[i]->w - highlight_end_width) %
+              texture_char_size;
+    }
 
-      // highlight begin line, but not highlighted
-      if (texture_start_height <= highlight_start_height &&
-          highlight_start_height < texture_start_height + textures[i]->h &&
-          texture_start_width + textures[i]->w < highlight_start_width) {
-        local_horizontal_offset += textures[i]->w;
-
-        continue;
-      }
-      // highlight end line, but not highlighted
-      if (texture_start_height <= highlight_end_height &&
-          highlight_end_height < texture_start_height + textures[i]->h &&
-          highlight_end_width < texture_start_width) {
-        local_horizontal_offset += textures[i]->w;
-        continue;
-      }
-
-      // highlighting start
-      if (texture_start_height <= highlight_start_height &&
-          highlight_start_height < texture_start_height + textures[i]->h &&
-          texture_start_width <= highlight_start_width &&
-          highlight_start_width < texture_start_width + textures[i]->w) {
-        highlight_start_offset =
-            (highlight_start_width - texture_start_width) -
-            (highlight_start_width - texture_start_width) % texture_char_size;
-      }
-      // highlighting end
-      if (texture_start_height <= highlight_end_height &&
-          highlight_end_height < texture_start_height + textures[i]->h &&
-          texture_start_width <= highlight_end_width &&
-          highlight_end_width < texture_start_width + textures[i]->w) {
-        hightlight_end_offset =
-            (texture_start_width + textures[i]->w - highlight_end_width) -
-            (texture_start_width + textures[i]->w - highlight_end_width) %
-                texture_char_size;
-      }
-
+    if (highlight) {
       SDL_Rect highlight_rect = {
           texture_start_width + highlight_start_offset, texture_start_height,
           textures[i]->w - (highlight_start_offset + hightlight_end_offset),
