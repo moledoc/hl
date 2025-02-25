@@ -176,6 +176,7 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
   }
 
   // mouse-highlighting
+  // TODO: highlighting on same line or close to start has some glitches
   for (int i = 0; state->left_mouse_button_pressed && i < textures_count;
        i += 1) {
     if (textures[i]->token->t == TOKEN_NEWLINE) {
@@ -190,67 +191,62 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
                               scroll->horizontal_offset;
     int texture_start_height =
         VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
-
-    // token is not in the vertical highlighted-zone
-    if (texture_start_height + textures[i]->h <= highlight_start_height ||
-        highlight_end_height <= texture_start_height) {
-      local_horizontal_offset += textures[i]->w;
-      continue;
-    }
-
-    // token is not in the horizontal highlighted-zone
-    // begin of highlight
-    if (texture_start_height <= highlight_start_height &&
-        highlight_start_height <= texture_start_height + textures[i]->h &&
-        texture_start_width + textures[i]->w < highlight_start_width) {
-
-      local_horizontal_offset += textures[i]->w;
-      continue;
-    }
-    // end of highlight
-    if (texture_start_height <= highlight_end_height &&
-        highlight_end_height <= texture_start_height + textures[i]->h &&
-        highlight_end_width <= texture_start_width) {
-
-      local_horizontal_offset += textures[i]->w;
-      continue;
-    }
-
     int texture_char_size = textures[i]->w / textures[i]->token->vlen;
-
-    // highlighting start
     int highlight_start_offset = 0;
-    if (texture_start_height <= highlight_start_height &&
-        highlight_start_height <= texture_start_height + textures[i]->h &&
-        texture_start_width <= highlight_start_width &&
-        highlight_start_width <= texture_start_width + textures[i]->w) {
-      highlight_start_offset =
-          (highlight_start_width - texture_start_width) -
-          (highlight_start_width - texture_start_width) % texture_char_size;
-    }
-    // highlighting end
     int hightlight_end_offset = 0;
-    if (texture_start_height <= highlight_end_height &&
-        highlight_end_height <= texture_start_height + textures[i]->h &&
-        texture_start_width <= highlight_end_width &&
-        highlight_end_width <= texture_start_width + textures[i]->w) {
-      hightlight_end_offset =
-          (texture_start_width + textures[i]->w - highlight_end_width) -
-          (texture_start_width + textures[i]->w - highlight_end_width) %
-              texture_char_size;
-    }
 
-    int offset = highlight_start_offset - hightlight_end_offset;
-    SDL_Rect highlight_rect = {
-        texture_start_width + (highlight_start_offset), texture_start_height,
-        textures[i]->w - (highlight_start_offset + hightlight_end_offset),
-        textures[i]->h};
-    SDL_Color prev = {0};
-    SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
-                           (Uint8 *)&prev.b, (Uint8 *)&prev.a);
-    SDL_SetRenderDrawColor(renderer, 128, 128, 128, 128);
-    SDL_RenderFillRect(renderer, &highlight_rect);
-    SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+    // find lines that contain highlighted area
+    if (highlight_start_height <= texture_start_height + textures[i]->h &&
+        texture_start_height < highlight_end_height) {
+
+      // highlight begin line, but not highlighted
+      if (texture_start_height <= highlight_start_height &&
+          highlight_start_height < texture_start_height + textures[i]->h &&
+          texture_start_width + textures[i]->w < highlight_start_width) {
+        local_horizontal_offset += textures[i]->w;
+
+        continue;
+      }
+      // highlight end line, but not highlighted
+      if (texture_start_height <= highlight_end_height &&
+          highlight_end_height < texture_start_height + textures[i]->h &&
+          highlight_end_width < texture_start_width) {
+        local_horizontal_offset += textures[i]->w;
+        continue;
+      }
+
+      // highlighting start
+      if (texture_start_height <= highlight_start_height &&
+          highlight_start_height < texture_start_height + textures[i]->h &&
+          texture_start_width <= highlight_start_width &&
+          highlight_start_width < texture_start_width + textures[i]->w) {
+        highlight_start_offset =
+            (highlight_start_width - texture_start_width) -
+            (highlight_start_width - texture_start_width) % texture_char_size;
+      }
+      // highlighting end
+      if (texture_start_height <= highlight_end_height &&
+          highlight_end_height < texture_start_height + textures[i]->h &&
+          texture_start_width <= highlight_end_width &&
+          highlight_end_width < texture_start_width + textures[i]->w) {
+        hightlight_end_offset =
+            (texture_start_width + textures[i]->w - highlight_end_width) -
+            (texture_start_width + textures[i]->w - highlight_end_width) %
+                texture_char_size;
+      }
+
+      SDL_Rect highlight_rect = {
+          texture_start_width + highlight_start_offset, texture_start_height,
+          textures[i]->w - (highlight_start_offset + hightlight_end_offset),
+          textures[i]->h};
+      SDL_Color prev = {0};
+      SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                             (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+      SDL_SetRenderDrawColor(renderer, MOUSE_HIGHLIGHT.r, MOUSE_HIGHLIGHT.g,
+                             MOUSE_HIGHLIGHT.b, MOUSE_HIGHLIGHT.a);
+      SDL_RenderFillRect(renderer, &highlight_rect);
+      SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+    }
 
     local_horizontal_offset += textures[i]->w;
   }
