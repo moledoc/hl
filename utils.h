@@ -1,5 +1,6 @@
 #pragma once
 
+int max(int a, int b) { return (a > b) * a + (b > a) * b; }
 int min(int a, int b) { return (a < b) * a + (b < a) * b; }
 int sign(int a) { return -1 * (a < 0) + 1 * (a > 0); }
 int clamp(int target, int lower_bound, int upper_bound) {

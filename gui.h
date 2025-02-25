@@ -135,21 +135,9 @@ void free_textures(Texture **textures, int textures_count) {
   }
 }
 
-// update_textures frees existing textures
-// and creates new textures from tokens
-// frees and allocs memory
-Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
-                          TTF_Font *font, int font_size, Token **tokens,
-                          int tokens_count, int *textures_count) {
-  free_textures(textures, *textures_count);
-  *textures_count = 0;
-  return tokens_to_textures(renderer, font, FONT_SIZE, tokens, tokens_count,
-                            textures_count);
-}
-
-int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
-                    Texture **textures, int textures_count, Scroll *scroll,
-                    State *state) {
+void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
+                            Texture **textures, int textures_count,
+                            Scroll *scroll, State *state) {
 
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
@@ -169,15 +157,24 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
   int highlight_end_width = mouse_x;
   int highlight_end_height = mouse_y;
 
-  if (mouse_y < scroll->highlight_start_height) {
+  // mouse is higher than starting point
+  if (mouse_y <= scroll->highlight_start_height) {
     highlight_end_height = scroll->highlight_start_height;
     highlight_start_height = mouse_y;
     highlight_end_width = scroll->highlight_start_width;
     highlight_start_width = mouse_x;
   }
 
+  // starting and end is on the same line
+  // to avoid glitches, assign starting with min and ending with max vals
+  if (abs(mouse_y - scroll->highlight_start_height) <= FONT_SIZE) {
+    highlight_start_height = min(scroll->highlight_start_height, mouse_y);
+    highlight_start_width = min(scroll->highlight_start_width, mouse_x);
+    highlight_end_height = max(scroll->highlight_start_height, mouse_y);
+    highlight_end_width = max(scroll->highlight_start_width, mouse_x);
+  }
+
   // mouse-highlighting
-  // TODO: highlighting on same line or close to start has some glitches
   for (int i = 0; state->left_mouse_button_pressed && i < textures_count;
        i += 1) {
     if (textures[i]->token->t == TOKEN_NEWLINE) {
@@ -250,11 +247,35 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
 
     local_horizontal_offset += textures[i]->w;
   }
+}
 
-  local_horizontal_offset = 0;
-  local_vertical_offset = 0;
+// update_textures frees existing textures
+// and creates new textures from tokens
+// frees and allocs memory
+Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
+                          TTF_Font *font, int font_size, Token **tokens,
+                          int tokens_count, int *textures_count) {
+  free_textures(textures, *textures_count);
+  *textures_count = 0;
+  return tokens_to_textures(renderer, font, FONT_SIZE, tokens, tokens_count,
+                            textures_count);
+}
 
-  max_horizontal_offset = 0;
+int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
+                    Texture **textures, int textures_count, Scroll *scroll,
+                    State *state) {
+
+  handle_mouse_highlight(window, renderer, textures, textures_count, scroll,
+                         state);
+
+  int local_horizontal_offset = 0;
+  int local_vertical_offset = 0;
+
+  int max_horizontal_offset = 0;
+
+  int window_height = 0;
+  int window_width = 0;
+  (void)SDL_GetWindowSize(window, &window_width, &window_height);
 
   for (int i = 0; i < textures_count; i += 1) {
 
