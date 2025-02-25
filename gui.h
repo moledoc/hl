@@ -41,7 +41,7 @@ const SDL_Color MOUSE_HIGHLIGHT = {190, 240, 255, 128};
 
 typedef struct {
   struct SDL_Texture *texture;
-  bool is_newline;
+  Token *token;
   int w;
   int h;
 } Texture;
@@ -113,7 +113,7 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
 
     Texture *tp = calloc(1, sizeof(Texture));
     tp->texture = text_texture;
-    tp->is_newline = tokens[i]->t == TOKEN_NEWLINE;
+    tp->token = tokens[i];
     tp->w = text_surface->w;
     tp->h = text_surface->h;
 
@@ -172,7 +172,7 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
 
   for (int i = 0; i < textures_count; i += 1) {
 
-    if (textures[i]->is_newline) {
+    if (textures[i]->token->t == TOKEN_NEWLINE) {
       max_horizontal_offset =
           gt(max_horizontal_offset, local_horizontal_offset);
       local_horizontal_offset = 0;
@@ -199,7 +199,8 @@ if (state->left_mouse_button_pressed &&
 
         if (state->left_mouse_button_pressed) {
           // highlight the same line
-          if (abs(scroll->highlight_start_y - mouse_y) < textures[i]->h &&
+          if ((scroll->highlight_start_x != mouse_x) &&
+              abs(scroll->highlight_start_y - mouse_y) < textures[i]->h &&
               texture_start_height <= scroll->highlight_start_y &&
               scroll->highlight_start_y <=
                   texture_start_height + textures[i]->h &&
@@ -209,9 +210,92 @@ if (state->left_mouse_button_pressed &&
                mouse_x <= texture_start_width + textures[i]->w &&
                    texture_start_width + textures[i]->h <=
                        scroll->highlight_start_x)) {
-            SDL_Rect highlight_rect = {texture_start_width,
-                                       texture_start_height, textures[i]->w,
-                                       textures[i]->h};
+
+            // TODO: check condition whether they should be inclusive or not
+            // currently sometimes grabbing too much on the boarders of tokens
+            int texture_char_size = textures[i]->w / textures[i]->token->vlen;
+            int highlight_start_offset_down =
+                (scroll->highlight_start_x < mouse_x) *
+                (texture_start_width <= scroll->highlight_start_x &&
+                 scroll->highlight_start_x <=
+                     texture_start_width + textures[i]->w) *
+                ((scroll->highlight_start_x - texture_start_width) -
+                 (scroll->highlight_start_x - texture_start_width) %
+                     texture_char_size);
+
+            int highlight_end_offset_down =
+                (scroll->highlight_start_x < mouse_x) *
+                (texture_start_width <= mouse_x &&
+                 mouse_x <= texture_start_width + textures[i]->w) *
+                ((texture_start_width + textures[i]->w - mouse_x) -
+                 (texture_start_width + textures[i]->w - mouse_x) %
+                     texture_char_size);
+
+            int highlight_start_offset_up =
+                (scroll->highlight_start_x > mouse_x) *
+                (texture_start_width <= mouse_x &&
+                 mouse_x <= texture_start_width + textures[i]->w) *
+                ((mouse_x - texture_start_width) -
+                 (mouse_x - texture_start_width) % texture_char_size);
+
+            int highlight_end_offset_up = 0;
+            if (!(scroll->highlight_start_x > mouse_x)) {
+              // insides the same word as start point
+              // TODO: make smoother, sometimes jumps around a bit
+            } else if (texture_start_width <= mouse_x &&
+                       scroll->highlight_start_x <
+                           texture_start_width + textures[i]->w) {
+              highlight_end_offset_up =
+                  (textures[i]->w - scroll->highlight_start_x + mouse_x) -
+                  (textures[i]->w - scroll->highlight_start_x + mouse_x) %
+                      texture_char_size;
+              // mouse outside start point, is not end of highlight
+            } else if (texture_start_width <= mouse_x &&
+                       mouse_x < texture_start_width + textures[i]->w &&
+                       texture_start_width + textures[i]->w <
+                           scroll->highlight_start_x) {
+              highlight_end_offset_up =
+                  ((mouse_x - texture_start_width) -
+                   (mouse_x - texture_start_width) % texture_char_size);
+              // mouse is outside word, but this is then end of highlight
+            } else if (texture_start_width <= scroll->highlight_start_x &&
+                       scroll->highlight_start_x <
+                           texture_start_width + textures[i]->w &&
+                       mouse_x < texture_start_width) {
+              highlight_end_offset_up = (texture_start_width + textures[i]->w -
+                                         scroll->highlight_start_x) -
+                                        (texture_start_width + textures[i]->w -
+                                         scroll->highlight_start_x) %
+                                            texture_char_size;
+            }
+
+            /*
+                            (scroll->highlight_start_x > mouse_x) *
+                            ((scroll->highlight_start_x - mouse_x >=
+               textures[i]->w) *
+                                 ((texture_start_width + textures[i]->w -
+                                   scroll->highlight_start_x) -
+                                  (texture_start_width + textures[i]->w -
+                                   scroll->highlight_start_x) %
+                                      texture_char_size) +
+                             (scroll->highlight_start_x - mouse_x <
+               textures[i]->w) * (scroll->highlight_start_x - mouse_x -
+                                  (scroll->highlight_start_x - mouse_x) %
+               texture_char_size)
+                            );
+            */
+
+            int highlight_on_spot =
+                (scroll->highlight_start_x == mouse_x) * textures[i]->w;
+
+            SDL_Rect highlight_rect = {
+                texture_start_width + highlight_start_offset_down +
+                    highlight_start_offset_up,
+                texture_start_height,
+                textures[i]->w - highlight_start_offset_down -
+                    highlight_end_offset_down - highlight_end_offset_up -
+                    highlight_on_spot,
+                textures[i]->h};
             SDL_Color prev = {0};
             SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                                    (Uint8 *)&prev.b, (Uint8 *)&prev.a);
