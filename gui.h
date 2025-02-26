@@ -265,7 +265,7 @@ void handle_mouse_highlight2(SDL_Window *window, SDL_Renderer *renderer,
 void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                             Texture **textures, int textures_count,
                             Scroll *scroll, State *state) {
-  if (!state->left_mouse_button_pressed) {
+  if (!state->left_mouse_button_pressed || textures_count == 0) {
     return;
   }
 
@@ -291,7 +291,10 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
   int highlight_end_x = mouse_x;
   int highlight_end_y = mouse_y;
 
+  int abs_mouse_height_diff = abs(mouse_y - scroll->highlight_start_y);
+
   // mouse is higher than starting point
+  // and more than
   if (mouse_y <= scroll->highlight_start_y) {
     highlight_end_y = scroll->highlight_start_y;
     highlight_start_y = mouse_y;
@@ -299,15 +302,15 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     highlight_start_x = mouse_x;
   }
 
-  int abs_mouse_height_diff = abs(mouse_y - scroll->highlight_start_y);
-
   // starting and end is on the same line
   // to avoid glitches on top-right and bottow-left on the line,
   // assign starting with min and ending with max vals.
   // why: mentioned areas will otherwise be out-of-highlight zone technically
-  if (abs_mouse_height_diff < FONT_SIZE) {
-    highlight_start_x = min(scroll->highlight_start_x, mouse_x);
-    highlight_end_x = max(scroll->highlight_start_x, mouse_x);
+  if (0 && abs_mouse_height_diff < textures[0]->h) {
+    /*
+        highlight_start_x = min(scroll->highlight_start_x, mouse_x);
+        highlight_end_x = max(scroll->highlight_start_x, mouse_x);
+    */
   }
 
   // mouse-highlighting
@@ -329,6 +332,7 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     // when highlighting upwards handle newlines:
     // find highlighted area that's past the start point
     // and take previous texture
+    // TODO: intermittently jittery
     if (start_idx < 0 &&
         (texture_start_height <= highlight_start_y &&
              highlight_start_y < texture_start_height + textures[i]->h &&
@@ -344,10 +348,12 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
         start_idx_offset_h = local_vertical_offset - textures[i - 1]->h;
       }
     }
+
     if (texture_start_height <= highlight_end_y &&
             highlight_end_y < texture_start_height + textures[i]->h &&
             highlight_end_x < texture_start_width ||
         highlight_end_y < texture_start_height) {
+
       end_idx = i;
       break;
     }
@@ -368,15 +374,11 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     local_horizontal_offset += textures[i]->w;
   }
 
+  // printf("HERE: %d %d\n", start_idx, end_idx);
   if (start_idx < 0) {
     start_idx = 0;
   }
   for (int i = start_idx; i < end_idx; i += 1) {
-    if (textures[i]->token->t == TOKEN_NEWLINE) {
-      start_idx_offset_w = 0;
-      start_idx_offset_h += textures[i]->h;
-      continue;
-    }
 
     int texture_start_width =
         HORIZONTAL_PADDING + start_idx_offset_w + scroll->horizontal_offset;
@@ -411,6 +413,12 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                            MOUSE_HIGHLIGHT.b, MOUSE_HIGHLIGHT.a);
     SDL_RenderFillRect(renderer, &highlight_rect);
     SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+
+    if (textures[i]->token->t == TOKEN_NEWLINE) {
+      start_idx_offset_w = 0;
+      start_idx_offset_h += textures[i]->h;
+      continue;
+    }
 
     start_idx_offset_w += textures[i]->w;
   }
