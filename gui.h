@@ -257,6 +257,7 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
 
   int start_idx = state->highlight_textures_start_idx;
   int end_idx = state->highlight_textures_end_idx;
+
   int highlight_start_x = state->highlight_start_coord->x;
   int highlight_end_x = state->highlight_end_coord->x;
 
@@ -277,23 +278,18 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
     int highlight_start_offset = 0;
     int hightlight_end_offset = 0;
 
-    if (0 && i == start_idx) {
+    if (i == start_idx) {
       highlight_start_offset =
           ((highlight_start_x - texture_start_width) -
            (highlight_start_x - texture_start_width) % texture_char_size) %
           textures[i]->w;
     }
-    if (0 && i == end_idx) {
+    if (i == end_idx) {
       hightlight_end_offset =
           ((texture_start_width + textures[i]->w - highlight_end_x) -
            (texture_start_width + textures[i]->w - highlight_end_x) %
                texture_char_size) %
           textures[i]->w;
-    }
-    // when newline, highlight up to window edge
-    if (textures[i]->token->t == TOKEN_NEWLINE) {
-      hightlight_end_offset =
-          -(state->window_width - highlight_start_offset - textures[i]->w);
     }
 
     SDL_Rect highlight_rect = {
@@ -499,6 +495,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                                            mouse_x, mouse_y, state);
       if (idx >= 0) {
         state->highlight_textures_end_idx = idx;
+        state->highlight_end_coord->x = mouse_x;
+        state->highlight_end_coord->y = mouse_y;
       }
 
       printf("HERE: %d %d\n", state->highlight_textures_start_idx,
@@ -518,6 +516,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                                            mouse_x, mouse_y, state);
       if (idx >= 0) {
         state->highlight_textures_start_idx = idx;
+        state->highlight_start_coord->x = mouse_x;
+        state->highlight_start_coord->y = mouse_y;
       }
 
       // NOTE: end and start the same to not highlight anything
