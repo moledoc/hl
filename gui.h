@@ -107,7 +107,6 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
   return -1;
 }
 
-// IMPROVEME: fix highlight on vertical scroll
 // TODO: fix highlight when moving out of window from top quickly
 // TODO: fix char-based highlighting when vertical scrolling
 void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
@@ -132,13 +131,13 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
   if (end_idx < start_idx) {
     start_idx = state->highlight_moving_texture_idx;
     end_idx = state->highlight_stationary_texture_idx;
+
     highlight_start_x = state->highlight_moving_coord->x;
     highlight_end_x = state->highlight_stationary_coord->x;
   }
   for (int i = start_idx; i <= end_idx; i += 1) {
 
-    int texture_start_width =
-        HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
+    int texture_start_width = HORIZONTAL_PADDING + textures[i]->x;
     int texture_start_height =
         VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
 
@@ -161,7 +160,8 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
     }
 
     SDL_Rect highlight_rect = {
-        texture_start_width + highlight_start_offset, texture_start_height,
+        state->horizontal_scroll + texture_start_width + highlight_start_offset,
+        texture_start_height,
         textures[i]->w - (highlight_start_offset + hightlight_end_offset),
         textures[i]->h};
     SDL_Color prev = {0};
