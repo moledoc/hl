@@ -262,6 +262,7 @@ void handle_mouse_highlight2(SDL_Window *window, SDL_Renderer *renderer,
 // TODO: FIXME: same-line is still bit glitchy
 // TODO: comment the solution (why, not what)
 // TODO: cleanup the solution
+// TODOO: FIXME: jitteriness when highlighting upwards
 void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                             Texture **textures, int textures_count,
                             Scroll *scroll, State *state) {
@@ -293,24 +294,25 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
 
   int abs_mouse_height_diff = abs(mouse_y - scroll->highlight_start_y);
 
-  // mouse is higher than starting point
-  // and more than
-  if (mouse_y <= scroll->highlight_start_y) {
+  // mouse is higher than starting point + 1 texture height
+  // then switch starting point with current mouse position
+  if (mouse_y <= scroll->highlight_start_y &&
+      abs_mouse_height_diff >= textures[0]->h) {
     highlight_end_y = scroll->highlight_start_y;
     highlight_start_y = mouse_y;
     highlight_end_x = scroll->highlight_start_x;
     highlight_start_x = mouse_x;
   }
 
-  // starting and end is on the same line
-  // to avoid glitches on top-right and bottow-left on the line,
-  // assign starting with min and ending with max vals.
-  // why: mentioned areas will otherwise be out-of-highlight zone technically
-  if (0 && abs_mouse_height_diff < textures[0]->h) {
-    /*
-        highlight_start_x = min(scroll->highlight_start_x, mouse_x);
-        highlight_end_x = max(scroll->highlight_start_x, mouse_x);
-    */
+  // mouse is left of starting point and
+  // vertical diff is less than 1 texture height,
+  // then switch starting point with current mouse position
+  if (mouse_x <= scroll->highlight_start_x &&
+      abs_mouse_height_diff < textures[0]->h) {
+    highlight_end_y = scroll->highlight_start_y;
+    highlight_start_y = mouse_y;
+    highlight_end_x = scroll->highlight_start_x;
+    highlight_start_x = mouse_x;
   }
 
   // mouse-highlighting
