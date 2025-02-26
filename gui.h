@@ -65,6 +65,8 @@ typedef struct {
 } Scroll;
 
 typedef struct {
+  int window_width;
+  int window_height;
   bool ctrl_pressed;
   bool shift_pressed;
   bool keep_window_open;
@@ -75,7 +77,30 @@ typedef struct {
   int max_vertical_offset;
   int horizontal_scroll;
   int vertical_scroll;
+  int highlight_textures_start_idx; // inclusive
+  int highlight_textures_end_idx;   // exclusive
 } State;
+
+int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
+                               int mouse_x, int mouse_y, State *state) {
+  for (int i = 0; i < textures_count; i += 1) {
+
+    int texture_start_width =
+        HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
+    int texture_start_height =
+        VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
+
+    if (
+        // we find the token hit by starting point
+        texture_start_height <= mouse_y &&
+        mouse_y < texture_start_height + textures[i]->h &&
+        texture_start_width < mouse_x &&
+        mouse_x < texture_start_width + textures[i]->w) {
+      return i;
+    }
+  }
+  return -1;
+}
 
 // TODO: comment the solution (why, not what)
 // TODO: cleanup the solution
@@ -83,8 +108,10 @@ typedef struct {
 void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                             Texture **textures, int textures_count,
                             Scroll *scroll, State *state) {
-  if (!state->left_mouse_button_pressed || textures_count == 0) {
+  if (0 && !state->left_mouse_button_pressed || textures_count == 0) {
     return;
+  }
+  if (0) {
   }
 
   int start_idx = -1;
@@ -213,6 +240,61 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
   }
 }
 
+void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
+                      Texture **textures, int textures_count, State *state) {
+  if (state->highlight_textures_start_idx < 0) {
+    return;
+  }
+
+  // REMOVEME:
+  int highlight_start_x = 0;
+  int highlight_end_x = 0;
+  //
+  for (int i = state->highlight_textures_start_idx;
+       i < state->highlight_textures_end_idx; i += 1) {
+
+    int texture_start_width =
+        HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
+    int texture_start_height =
+        VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
+
+    int texture_char_size = textures[i]->w / textures[i]->token->vlen;
+    int highlight_start_offset = 0;
+    int hightlight_end_offset = 0;
+
+    if (0 && i == state->highlight_textures_start_idx) {
+      highlight_start_offset =
+          ((highlight_start_x - texture_start_width) -
+           (highlight_start_x - texture_start_width) % texture_char_size) %
+          textures[i]->w;
+    }
+    if (0 && i + 1 == state->highlight_textures_end_idx) {
+      hightlight_end_offset =
+          ((texture_start_width + textures[i]->w - highlight_end_x) -
+           (texture_start_width + textures[i]->w - highlight_end_x) %
+               texture_char_size) %
+          textures[i]->w;
+    }
+    // when newline, highlight up to window edge
+    if (textures[i]->token->t == TOKEN_NEWLINE) {
+      hightlight_end_offset =
+          -(state->window_width - highlight_start_offset - textures[i]->w);
+    }
+
+    SDL_Rect highlight_rect = {
+        texture_start_width + highlight_start_offset, texture_start_height,
+        textures[i]->w - (highlight_start_offset + hightlight_end_offset),
+        textures[i]->h};
+    SDL_Color prev = {0};
+    SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                           (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+    SDL_SetRenderDrawColor(renderer, MOUSE_HIGHLIGHT.r, MOUSE_HIGHLIGHT.g,
+                           MOUSE_HIGHLIGHT.b, MOUSE_HIGHLIGHT.a);
+    SDL_RenderFillRect(renderer, &highlight_rect);
+    SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+  }
+}
+
 // allocs memory
 Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
                              int font_size, Token **tokens, int tokens_count,
@@ -273,6 +355,7 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     if (tokens[i]->t == TOKEN_NEWLINE) {
       max_horizontal_offset =
           gt(max_horizontal_offset, local_horizontal_offset);
+      tp->w += state->window_width - local_horizontal_offset - tp->w;
       local_horizontal_offset = 0;
       local_vertical_offset += text_surface->h;
     } else {
@@ -312,14 +395,12 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
                     Texture **textures, int textures_count, Scroll *scroll,
                     State *state) {
 
-  if (state->left_mouse_button_pressed) {
+  if (0 && state->left_mouse_button_pressed) {
     handle_mouse_highlight(window, renderer, textures, textures_count, scroll,
                            state);
   }
 
-  int window_height = 0;
-  int window_width = 0;
-  (void)SDL_GetWindowSize(window, &window_width, &window_height);
+  handle_highlight(window, renderer, textures, textures_count, state);
 
   for (int i = 0; i < textures_count; i += 1) {
 
@@ -329,8 +410,8 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
         VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
 
     // NOTE: only render what fits on screen
-    if (!(texture_start_height <= window_height &&
-          texture_start_width <= window_width)) {
+    if (!(texture_start_height <= state->window_height &&
+          texture_start_width <= state->window_width)) {
       continue;
     }
     if (textures[i]->token->t == TOKEN_NEWLINE) {
@@ -399,6 +480,35 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->left_mouse_button_pressed = true;
       (void)SDL_GetMouseState(&scroll->highlight_start_x,
                               &scroll->highlight_start_y);
+      int mouse_x = 0;
+      int mouse_y = 0;
+      (void)SDL_GetMouseState(&mouse_x, &mouse_y);
+
+      state->highlight_textures_start_idx = texture_idx_from_mouse_pos(
+          text_textures, textures_count, mouse_x, mouse_y, state);
+
+      // NOTE: highlight end being same as beginning means no highlighting
+      state->highlight_textures_end_idx = state->highlight_textures_start_idx;
+
+    } else if (state->left_mouse_button_pressed &&
+               sdl_event.type == SDL_MOUSEMOTION) {
+      int mouse_x = 0;
+      int mouse_y = 0;
+      (void)SDL_GetMouseState(&mouse_x, &mouse_y);
+      state->highlight_textures_end_idx = texture_idx_from_mouse_pos(
+          text_textures, textures_count, mouse_x, mouse_y, state);
+
+      // NOTE: if found token idx is smaller,
+      // reverse the start and end indecies
+      if (state->highlight_textures_end_idx <
+          state->highlight_textures_start_idx) {
+        int tmp = state->highlight_textures_end_idx;
+        state->highlight_textures_end_idx = state->highlight_textures_start_idx;
+        state->highlight_textures_start_idx = tmp;
+      }
+      printf("HERE: %d %d\n", state->highlight_textures_start_idx,
+             state->highlight_textures_end_idx);
+
     } else if (sdl_event.type == SDL_MOUSEBUTTONUP &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
                sdl_event.button.state == SDL_RELEASED) {
@@ -416,12 +526,11 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       // SCROLL HORIZONTAL START
     } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.x != 0) {
-      int w_width = 0;
-      SDL_GetWindowSizeInPixels(window, &w_width, NULL);
+
       // NOTE: if lower_bound is 0, then no horizontal scrolling
       state->horizontal_scroll = clamp(
           state->horizontal_scroll + HORIZONTAL_SCROLL_MULT * sdl_event.wheel.x,
-          state->max_horizontal_offset >= w_width
+          state->max_horizontal_offset >= state->window_width
               ? -state->max_horizontal_offset
               : 0,
           0);
@@ -460,6 +569,9 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       TTF_SetFontSize(font, FONT_SIZE);
       state->refresh_tokens = true;
       // FONT RESIZE TO DEFAULT END
+    } else if (sdl_event.type == SDL_WINDOWEVENT) {
+      (void)SDL_GetWindowSize(window, &state->window_width,
+                              &state->window_height);
     }
 
     SDL_RenderClear(renderer);
@@ -524,6 +636,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   }
 
   State *state = calloc(1, sizeof(State));
+  (void)SDL_GetWindowSize(window, &state->window_width, &state->window_height);
+
   int textures_count = 0;
   Texture **text_textures = tokens_to_textures(
       renderer, font, FONT_SIZE, tokens, tokens_count, &textures_count, state);
