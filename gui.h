@@ -65,34 +65,46 @@ typedef struct {
 } Scroll;
 
 typedef struct {
+  int x;
+  int y;
+} Coord;
+
+typedef struct {
   int window_width;
   int window_height;
-  bool ctrl_pressed;
-  bool shift_pressed;
+  //
   bool keep_window_open;
   bool refresh_tokens;
   bool file_modified;
+  //
+  bool ctrl_pressed;
+  bool shift_pressed;
   bool left_mouse_button_pressed;
+  //
   int max_horizontal_offset;
   int max_vertical_offset;
+  //
   int horizontal_scroll;
   int vertical_scroll;
+  //
   int highlight_textures_start_idx; // inclusive
-  int highlight_textures_end_idx;   // exclusive
+  int highlight_textures_end_idx;   // inclusive
+  Coord *highlight_start_coord;
+  Coord *highlight_end_coord;
 } State;
 
+// TODO: improve token finding for better highlighting
+// newlines, cursor out-of-window etc
 int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
                                int mouse_x, int mouse_y, State *state) {
   for (int i = 0; i < textures_count; i += 1) {
-
     int texture_start_width =
         HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
     int texture_start_height =
         VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
 
-    if (
-        // we find the token hit by starting point
-        texture_start_height <= mouse_y &&
+    // direct hit on the token
+    if (texture_start_height <= mouse_y &&
         mouse_y < texture_start_height + textures[i]->h &&
         texture_start_width < mouse_x &&
         mouse_x < texture_start_width + textures[i]->w) {
@@ -111,9 +123,6 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
   if (0 && !state->left_mouse_button_pressed || textures_count == 0) {
     return;
   }
-  if (0) {
-  }
-
   int start_idx = -1;
   int end_idx = textures_count;
 
@@ -246,12 +255,18 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
     return;
   }
 
-  // REMOVEME:
-  int highlight_start_x = 0;
-  int highlight_end_x = 0;
-  //
-  for (int i = state->highlight_textures_start_idx;
-       i < state->highlight_textures_end_idx; i += 1) {
+  int start_idx = state->highlight_textures_start_idx;
+  int end_idx = state->highlight_textures_end_idx;
+  int highlight_start_x = state->highlight_start_coord->x;
+  int highlight_end_x = state->highlight_end_coord->x;
+
+  if (end_idx < start_idx) {
+    start_idx = state->highlight_textures_end_idx;
+    end_idx = state->highlight_textures_start_idx;
+    highlight_start_x = state->highlight_end_coord->x;
+    highlight_end_x = state->highlight_start_coord->x;
+  }
+  for (int i = start_idx; i <= end_idx; i += 1) {
 
     int texture_start_width =
         HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
@@ -262,13 +277,13 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
     int highlight_start_offset = 0;
     int hightlight_end_offset = 0;
 
-    if (0 && i == state->highlight_textures_start_idx) {
+    if (0 && i == start_idx) {
       highlight_start_offset =
           ((highlight_start_x - texture_start_width) -
            (highlight_start_x - texture_start_width) % texture_char_size) %
           textures[i]->w;
     }
-    if (0 && i + 1 == state->highlight_textures_end_idx) {
+    if (0 && i == end_idx) {
       hightlight_end_offset =
           ((texture_start_width + textures[i]->w - highlight_end_x) -
            (texture_start_width + textures[i]->w - highlight_end_x) %
@@ -355,6 +370,7 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     if (tokens[i]->t == TOKEN_NEWLINE) {
       max_horizontal_offset =
           gt(max_horizontal_offset, local_horizontal_offset);
+      // NOTE: if newline, extend the texture width to end of screen
       tp->w += state->window_width - local_horizontal_offset - tp->w;
       local_horizontal_offset = 0;
       local_vertical_offset += text_surface->h;
@@ -474,6 +490,20 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       // SHIFT END
 
       // MOUSE START
+    } else if (state->left_mouse_button_pressed &&
+               sdl_event.type == SDL_MOUSEMOTION) {
+      int mouse_x = 0;
+      int mouse_y = 0;
+      (void)SDL_GetMouseState(&mouse_x, &mouse_y);
+      int idx = texture_idx_from_mouse_pos(text_textures, textures_count,
+                                           mouse_x, mouse_y, state);
+      if (idx >= 0) {
+        state->highlight_textures_end_idx = idx;
+      }
+
+      printf("HERE: %d %d\n", state->highlight_textures_start_idx,
+             state->highlight_textures_end_idx);
+
     } else if (sdl_event.type == SDL_MOUSEBUTTONDOWN &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
                sdl_event.button.state == SDL_PRESSED) {
@@ -484,30 +514,14 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       int mouse_y = 0;
       (void)SDL_GetMouseState(&mouse_x, &mouse_y);
 
-      state->highlight_textures_start_idx = texture_idx_from_mouse_pos(
-          text_textures, textures_count, mouse_x, mouse_y, state);
-
-      // NOTE: highlight end being same as beginning means no highlighting
-      state->highlight_textures_end_idx = state->highlight_textures_start_idx;
-
-    } else if (state->left_mouse_button_pressed &&
-               sdl_event.type == SDL_MOUSEMOTION) {
-      int mouse_x = 0;
-      int mouse_y = 0;
-      (void)SDL_GetMouseState(&mouse_x, &mouse_y);
-      state->highlight_textures_end_idx = texture_idx_from_mouse_pos(
-          text_textures, textures_count, mouse_x, mouse_y, state);
-
-      // NOTE: if found token idx is smaller,
-      // reverse the start and end indecies
-      if (state->highlight_textures_end_idx <
-          state->highlight_textures_start_idx) {
-        int tmp = state->highlight_textures_end_idx;
-        state->highlight_textures_end_idx = state->highlight_textures_start_idx;
-        state->highlight_textures_start_idx = tmp;
+      int idx = texture_idx_from_mouse_pos(text_textures, textures_count,
+                                           mouse_x, mouse_y, state);
+      if (idx >= 0) {
+        state->highlight_textures_start_idx = idx;
       }
-      printf("HERE: %d %d\n", state->highlight_textures_start_idx,
-             state->highlight_textures_end_idx);
+
+      // NOTE: end and start the same to not highlight anything
+      state->highlight_textures_end_idx = state->highlight_textures_start_idx;
 
     } else if (sdl_event.type == SDL_MOUSEBUTTONUP &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
@@ -636,6 +650,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   }
 
   State *state = calloc(1, sizeof(State));
+  state->highlight_start_coord = calloc(1, sizeof(Coord));
+  state->highlight_end_coord = calloc(1, sizeof(Coord));
   (void)SDL_GetWindowSize(window, &state->window_width, &state->window_height);
 
   int textures_count = 0;
@@ -729,6 +745,12 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     free(scroll);
   }
   if (state != NULL) {
+    if (state->highlight_start_coord != NULL) {
+      free(state->highlight_start_coord);
+    }
+    if (state->highlight_end_coord != NULL) {
+      free(state->highlight_end_coord);
+    }
     free(state);
   }
 
