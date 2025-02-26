@@ -107,7 +107,9 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
   return -1;
 }
 
-// TODO: fix highlight on vertical scroll
+// IMPROVEME: fix highlight on vertical scroll
+// TODO: fix highlight when moving out of window from top quickly
+// TODO: fix char-based highlighting when vertical scrolling
 void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
                       Texture **textures, int textures_count, State *state) {
   if (
@@ -233,7 +235,8 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
       max_horizontal_offset =
           gt(max_horizontal_offset, local_horizontal_offset);
       // NOTE: if newline, extend the texture width to end of screen
-      tp->w += state->window_width - local_horizontal_offset - tp->w;
+      tp->w += 4 * state->window_width - local_horizontal_offset -
+               tp->w; // FIXME: HACK: vertical scrolling fix
       local_horizontal_offset = 0;
       local_vertical_offset += text_surface->h;
     } else {
