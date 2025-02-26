@@ -46,8 +46,10 @@ Tool to put (colored) text on the screen.
 	- [ ] highlighting text with mouse
 		- [x] token based highlighting
 		- [ ] keep highlighting after letting go, stop highlighting after click
-		- [ ] char based highlighting
-		- [ ] better accuracy on highlighting
+		- [x] char based highlighting
+		- [x] better accuracy on highlighting
+		- [ ] mouse scrolling highlight previously highlighted area, instead of moving along
+			 - store beginning token instead of beginning mouse pos
 	- [ ] copy-paste highlighted text
 	- [ ] soft-wrap text
 	- [ ] UTF handling

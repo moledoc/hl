@@ -136,7 +136,7 @@ void free_textures(Texture **textures, int textures_count) {
 
 // TODO: comment the solution (why, not what)
 // TODO: cleanup the solution
-// TODOO: FIXME: jitteriness on startline-boarder when highlighting upwards
+// TODO: FIXME: jitteriness when highlighting from newline
 void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                             Texture **textures, int textures_count,
                             Scroll *scroll, State *state) {
