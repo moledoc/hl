@@ -169,21 +169,17 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
 
   int abs_mouse_height_diff = abs(mouse_y - scroll->highlight_start_y);
 
-  // mouse is higher than starting point + 1 texture height
-  // then switch starting point with current mouse position
-  if (mouse_y <= scroll->highlight_start_y &&
-      abs_mouse_height_diff >= textures[0]->h) {
-    highlight_end_y = scroll->highlight_start_y;
-    highlight_start_y = mouse_y;
-    highlight_end_x = scroll->highlight_start_x;
-    highlight_start_x = mouse_x;
-  }
-
-  // mouse is left of starting point and
-  // vertical diff is less than 1 texture height,
-  // then switch starting point with current mouse position
-  if (mouse_x <= scroll->highlight_start_x &&
-      abs_mouse_height_diff < textures[0]->h) {
+  // switch starting point with current mouse position, when
+  if (
+      // mouse is higher than starting point + 1 texture height
+      mouse_y <= scroll->highlight_start_y &&
+          abs_mouse_height_diff >= textures[0]->h
+      //
+      ||
+      // mouse is left of starting point and
+      // vertical diff is less than 1 texture height
+      mouse_x <= scroll->highlight_start_x &&
+          abs_mouse_height_diff < textures[0]->h) {
     highlight_end_y = scroll->highlight_start_y;
     highlight_start_y = mouse_y;
     highlight_end_x = scroll->highlight_start_x;
