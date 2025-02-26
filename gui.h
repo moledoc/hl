@@ -71,10 +71,10 @@ typedef struct {
   int horizontal_scroll;
   int vertical_scroll;
   //
-  int highlight_textures_start_idx; // inclusive
-  int highlight_textures_end_idx;   // inclusive
-  Coord *highlight_start_coord;
-  Coord *highlight_end_coord;
+  int highlight_stationary_texture_idx; // inclusive
+  int highlight_moving_texture_idx;     // inclusive
+  Coord *highlight_stationary_coord;
+  Coord *highlight_moving_coord;
 } State;
 
 // TODO: improve token finding for better highlighting
@@ -100,21 +100,21 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
 
 void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
                       Texture **textures, int textures_count, State *state) {
-  if (state->highlight_textures_start_idx < 0) {
+  if (state->highlight_stationary_texture_idx < 0) {
     return;
   }
 
-  int start_idx = state->highlight_textures_start_idx;
-  int end_idx = state->highlight_textures_end_idx;
+  int start_idx = state->highlight_stationary_texture_idx;
+  int end_idx = state->highlight_moving_texture_idx;
 
-  int highlight_start_x = state->highlight_start_coord->x;
-  int highlight_end_x = state->highlight_end_coord->x;
+  int highlight_start_x = state->highlight_stationary_coord->x;
+  int highlight_end_x = state->highlight_moving_coord->x;
 
   if (end_idx < start_idx) {
-    start_idx = state->highlight_textures_end_idx;
-    end_idx = state->highlight_textures_start_idx;
-    highlight_start_x = state->highlight_end_coord->x;
-    highlight_end_x = state->highlight_start_coord->x;
+    start_idx = state->highlight_moving_texture_idx;
+    end_idx = state->highlight_stationary_texture_idx;
+    highlight_start_x = state->highlight_moving_coord->x;
+    highlight_end_x = state->highlight_stationary_coord->x;
   }
   for (int i = start_idx; i <= end_idx; i += 1) {
 
@@ -337,9 +337,9 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       int idx = texture_idx_from_mouse_pos(text_textures, textures_count,
                                            mouse_x, mouse_y, state);
       if (idx >= 0) {
-        state->highlight_textures_end_idx = idx;
-        state->highlight_end_coord->x = mouse_x;
-        state->highlight_end_coord->y = mouse_y;
+        state->highlight_moving_texture_idx = idx;
+        state->highlight_moving_coord->x = mouse_x;
+        state->highlight_moving_coord->y = mouse_y;
       }
 
     } else if (sdl_event.type == SDL_MOUSEBUTTONDOWN &&
@@ -353,13 +353,14 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       int idx = texture_idx_from_mouse_pos(text_textures, textures_count,
                                            mouse_x, mouse_y, state);
       if (idx >= 0) {
-        state->highlight_textures_start_idx = idx;
-        state->highlight_start_coord->x = mouse_x;
-        state->highlight_start_coord->y = mouse_y;
+        state->highlight_stationary_texture_idx = idx;
+        state->highlight_stationary_coord->x = mouse_x;
+        state->highlight_stationary_coord->y = mouse_y;
       }
 
       // NOTE: end and start the same to not highlight anything
-      state->highlight_textures_end_idx = state->highlight_textures_start_idx;
+      state->highlight_moving_texture_idx =
+          state->highlight_stationary_texture_idx;
 
     } else if (sdl_event.type == SDL_MOUSEBUTTONUP &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
@@ -488,8 +489,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   }
 
   State *state = calloc(1, sizeof(State));
-  state->highlight_start_coord = calloc(1, sizeof(Coord));
-  state->highlight_end_coord = calloc(1, sizeof(Coord));
+  state->highlight_stationary_coord = calloc(1, sizeof(Coord));
+  state->highlight_moving_coord = calloc(1, sizeof(Coord));
   (void)SDL_GetWindowSize(window, &state->window_width, &state->window_height);
 
   int textures_count = 0;
@@ -577,11 +578,11 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   free_tokens(tokens, tokens_count);
   free_contents(contents);
   if (state != NULL) {
-    if (state->highlight_start_coord != NULL) {
-      free(state->highlight_start_coord);
+    if (state->highlight_stationary_coord != NULL) {
+      free(state->highlight_stationary_coord);
     }
-    if (state->highlight_end_coord != NULL) {
-      free(state->highlight_end_coord);
+    if (state->highlight_moving_coord != NULL) {
+      free(state->highlight_moving_coord);
     }
     free(state);
   }
