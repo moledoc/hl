@@ -77,8 +77,6 @@ typedef struct {
   Coord *highlight_moving_coord;
 } State;
 
-// TODO: improve token finding for better highlighting
-// newlines, cursor out-of-window etc
 int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
                                int mouse_x, int mouse_y, State *state) {
   for (int i = 0; i < textures_count; i += 1) {
@@ -87,17 +85,30 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
     int texture_start_height =
         VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
 
-    // direct hit on the token
     if (texture_start_height <= mouse_y &&
         mouse_y < texture_start_height + textures[i]->h &&
-        texture_start_width < mouse_x &&
-        mouse_x < texture_start_width + textures[i]->w) {
+        (
+            // direct hit on the token
+            texture_start_width < mouse_x &&
+                mouse_x < texture_start_width + textures[i]->w
+            //
+            ||
+            // mouse is out of window to the left
+            mouse_x < 0
+            //
+            ||
+            // mouse is out of window to the right
+            mouse_x > state->window_width
+            //
+            )) {
       return i;
     }
   }
   return -1;
 }
 
+// TODO: fix highlight on vertical scroll
+// TODO: fix single click highlighting
 void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
                       Texture **textures, int textures_count, State *state) {
   if (state->highlight_stationary_texture_idx < 0) {
