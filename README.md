@@ -49,7 +49,8 @@ Tool to put (colored) text on the screen.
 		- [x] char based highlighting
 		- [x] better accuracy on highlighting
 		- [x] mouse scrolling highlight previously highlighted area, instead of moving along
-			 - store beginning token instead of beginning mouse pos
+			 - [x] store beginning token instead of beginning mouse pos
+		- [ ] acme-inspired highlighting (inside quotes, parenthesis, brackets etc)
 	- [ ] copy-paste highlighted text
 	- [ ] soft-wrap text
 	- [ ] UTF handling
@@ -59,6 +60,10 @@ Tool to put (colored) text on the screen.
 	- [ ] specify color schemes
 		- [ ] cmd args
 		- [ ] on the fly
+	- [ ] some acme-inspired mouse actions
+		- TBD
+	- [ ] somoe vim-inspired keyboard shortcuts for navigation
+		- TBD
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
