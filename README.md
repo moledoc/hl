@@ -35,7 +35,7 @@ Tool to put (colored) text on the screen.
 		- [x] ctrl+mouse-wheel
 		- [x] reset to default
 	- [x] keyword based highlighting in GUI
-		- [ ] multi-line strings are not properly handling newline chars
+		- [x] multi-line strings are not properly handling newline chars
 	- [x] bounded horizontal/vertical scrolling
 		- [x] extension: horizontal scrolling only when text doesn't fit the screen
 		- [x] extension: able to specify scrolling factor
@@ -44,6 +44,13 @@ Tool to put (colored) text on the screen.
 	- [ ] ~~when font is resized, keep same place in view~~
 		- [x] smaller font increment instead
 	- [ ] highlighting text with mouse
+		- [x] token based highlighting
+		- [x] keep highlighting after letting go, stop highlighting after click
+		- [x] char based highlighting
+		- [x] better accuracy on highlighting
+		- [x] mouse scrolling highlight previously highlighted area, instead of moving along
+			 - [x] store beginning token instead of beginning mouse pos
+		- [ ] acme-inspired highlighting (inside quotes, parenthesis, brackets etc)
 	- [ ] copy-paste highlighted text
 	- [ ] soft-wrap text
 	- [ ] UTF handling
@@ -53,11 +60,16 @@ Tool to put (colored) text on the screen.
 	- [ ] specify color schemes
 		- [ ] cmd args
 		- [ ] on the fly
+	- [ ] some acme-inspired mouse actions
+		- TBD
+	- [ ] somoe vim-inspired keyboard shortcuts for navigation
+		- TBD
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
 - [x] merge tokenize_test into the main file
 - [ ] commandline arguments to toggle different functionality; eg tui vs gui mode, overriding comment/code style, etc
+	- [x] override what to color/what not to color
 - [ ] resolve TODOs and others
 - [ ] placeholder
 - [ ] proper readme
