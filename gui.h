@@ -134,10 +134,9 @@ void free_textures(Texture **textures, int textures_count) {
   }
 }
 
-// TODO: FIXME: same-line is still bit glitchy
 // TODO: comment the solution (why, not what)
 // TODO: cleanup the solution
-// TODOO: FIXME: jitteriness when highlighting upwards
+// TODOO: FIXME: jitteriness on startline-boarder when highlighting upwards
 void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                             Texture **textures, int textures_count,
                             Scroll *scroll, State *state) {
@@ -194,32 +193,21 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     int texture_start_height =
         VERTICAL_PADDING + local_vertical_offset + scroll->vertical_offset;
 
-    if (texture_start_height <= highlight_start_y &&
-        highlight_start_y < texture_start_height + textures[i]->h &&
-        texture_start_width < highlight_start_x &&
-        highlight_start_x < texture_start_width + textures[i]->w) {
+    if (
+        // we find the token hit by starting point
+        texture_start_height <= highlight_start_y &&
+            highlight_start_y < texture_start_height + textures[i]->h &&
+            texture_start_width < highlight_start_x &&
+            highlight_start_x < texture_start_width + textures[i]->w
+        // we're past tokens (eg right of newline)
+        // and no starting point is set
+        || start_idx < 0 && texture_start_height <= highlight_start_y &&
+               highlight_start_y < texture_start_height + textures[i]->h &&
+               textures[i]->token->t == TOKEN_NEWLINE &&
+               texture_start_width + textures[i]->w < highlight_start_x) {
       start_idx = i;
       start_idx_offset_w = local_horizontal_offset;
       start_idx_offset_h = local_vertical_offset;
-    }
-    // when highlighting upwards handle newlines:
-    // find highlighted area that's past the start point
-    // and take previous texture
-    // TODO: intermittently jittery
-    if (start_idx < 0 &&
-        (texture_start_height <= highlight_start_y &&
-             highlight_start_y < texture_start_height + textures[i]->h &&
-             highlight_start_x < texture_start_width ||
-         highlight_start_y < texture_start_height)) {
-      if (i > 0) {
-        start_idx = i - 1;
-      }
-      if (local_horizontal_offset > 0) {
-        start_idx_offset_w = local_horizontal_offset - textures[i - 1]->w;
-      }
-      if (local_vertical_offset > 0) {
-        start_idx_offset_h = local_vertical_offset - textures[i - 1]->h;
-      }
     }
 
     if (texture_start_height <= highlight_end_y &&
