@@ -108,10 +108,16 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
 }
 
 // TODO: fix highlight on vertical scroll
-// TODO: fix single click highlighting
 void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
                       Texture **textures, int textures_count, State *state) {
-  if (state->highlight_stationary_texture_idx < 0) {
+  if (
+      // stationary token index was neg
+      state->highlight_stationary_texture_idx < 0 ||
+      // mouse click, no moving
+      state->highlight_stationary_coord->x ==
+              state->highlight_moving_coord->x &&
+          state->highlight_stationary_coord->y ==
+              state->highlight_moving_coord->y) {
     return;
   }
 
@@ -367,11 +373,15 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         state->highlight_stationary_texture_idx = idx;
         state->highlight_stationary_coord->x = mouse_x;
         state->highlight_stationary_coord->y = mouse_y;
-      }
 
-      // NOTE: end and start the same to not highlight anything
-      state->highlight_moving_texture_idx =
-          state->highlight_stationary_texture_idx;
+        // NOTE: set moving values to stationary ones
+        // to not highlight on click
+        // if mouse is moved, then will highlight
+        state->highlight_moving_texture_idx =
+            state->highlight_stationary_texture_idx;
+        state->highlight_moving_coord->x = mouse_x;
+        state->highlight_moving_coord->y = mouse_y;
+      }
 
     } else if (sdl_event.type == SDL_MOUSEBUTTONUP &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
