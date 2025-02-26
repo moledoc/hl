@@ -259,6 +259,9 @@ void handle_mouse_highlight2(SDL_Window *window, SDL_Renderer *renderer,
   }
 }
 
+// TODO: FIXME: same-line is still bit glitchy
+// TODO: comment the solution (why, not what)
+// TODO: cleanup the solution
 void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
                             Texture **textures, int textures_count,
                             Scroll *scroll, State *state) {
@@ -266,7 +269,7 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     return;
   }
 
-  int start_idx = 0;
+  int start_idx = -1;
   int end_idx = textures_count;
 
   int start_idx_offset_w = 0;
@@ -296,6 +299,17 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     highlight_start_x = mouse_x;
   }
 
+  int abs_mouse_height_diff = abs(mouse_y - scroll->highlight_start_y);
+
+  // starting and end is on the same line
+  // to avoid glitches on top-right and bottow-left on the line,
+  // assign starting with min and ending with max vals.
+  // why: mentioned areas will otherwise be out-of-highlight zone technically
+  if (abs_mouse_height_diff < FONT_SIZE) {
+    highlight_start_x = min(scroll->highlight_start_x, mouse_x);
+    highlight_end_x = max(scroll->highlight_start_x, mouse_x);
+  }
+
   // mouse-highlighting
   for (int i = 0; i < textures_count; i += 1) {
 
@@ -312,23 +326,24 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
       start_idx_offset_w = local_horizontal_offset;
       start_idx_offset_h = local_vertical_offset;
     }
-    if (start_idx == 0 &&
+    // when highlighting upwards handle newlines:
+    // find highlighted area that's past the start point
+    // and take previous texture
+    if (start_idx < 0 &&
         (texture_start_height <= highlight_start_y &&
              highlight_start_y < texture_start_height + textures[i]->h &&
              highlight_start_x < texture_start_width ||
          highlight_start_y < texture_start_height)) {
-      start_idx = i - 1;
-      start_idx_offset_w = local_horizontal_offset - textures[i - 1]->w;
-      start_idx_offset_h = local_vertical_offset - textures[i - 1]->h;
+      if (i > 0) {
+        start_idx = i - 1;
+      }
+      if (local_horizontal_offset > 0) {
+        start_idx_offset_w = local_horizontal_offset - textures[i - 1]->w;
+      }
+      if (local_vertical_offset > 0) {
+        start_idx_offset_h = local_vertical_offset - textures[i - 1]->h;
+      }
     }
-    /*
-        if (texture_start_height <= highlight_end_y &&
-            highlight_end_y < texture_start_height + textures[i]->h &&
-            texture_start_width < highlight_end_x &&
-            highlight_end_x < texture_start_width + textures[i]->w) {
-          end_idx = i;
-        }
-    */
     if (texture_start_height <= highlight_end_y &&
             highlight_end_y < texture_start_height + textures[i]->h &&
             highlight_end_x < texture_start_width ||
@@ -337,8 +352,6 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
       break;
     }
 
-    // FIXME: no start_idx/end_idx set on newline
-    // when past the newline texture width
     if (textures[i]->token->t == TOKEN_NEWLINE) {
       local_horizontal_offset = 0;
       local_vertical_offset += textures[i]->h;
@@ -355,14 +368,9 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     local_horizontal_offset += textures[i]->w;
   }
 
-  if (end_idx < start_idx) {
-    int tmp = end_idx;
-    end_idx = start_idx;
-    start_idx = tmp;
+  if (start_idx < 0) {
+    start_idx = 0;
   }
-  // printf("HERE: %d %d %s %s\n", start_idx, end_idx,
-  //        textures[start_idx]->token->v, textures[end_idx]->token->v);
-
   for (int i = start_idx; i < end_idx; i += 1) {
     if (textures[i]->token->t == TOKEN_NEWLINE) {
       start_idx_offset_w = 0;
@@ -424,8 +432,10 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
                     Texture **textures, int textures_count, Scroll *scroll,
                     State *state) {
 
-  handle_mouse_highlight(window, renderer, textures, textures_count, scroll,
-                         state);
+  if (state->left_mouse_button_pressed) {
+    handle_mouse_highlight(window, renderer, textures, textures_count, scroll,
+                           state);
+  }
 
   int local_horizontal_offset = 0;
   int local_vertical_offset = 0;
