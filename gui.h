@@ -251,7 +251,6 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
     local_horizontal_offset += textures[i]->w;
   }
 
-  // printf("HERE: %d %d\n", start_idx, end_idx);
   if (start_idx < 0) {
     start_idx = 0;
   }
@@ -277,6 +276,10 @@ void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
            (texture_start_width + textures[i]->w - highlight_end_x) %
                texture_char_size) %
           textures[i]->w;
+    }
+    if (textures[i]->token->t == TOKEN_NEWLINE) {
+      hightlight_end_offset =
+          -(window_width - highlight_start_offset - textures[i]->w);
     }
 
     SDL_Rect highlight_rect = {
