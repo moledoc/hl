@@ -49,22 +49,6 @@ typedef struct {
 } Texture;
 
 typedef struct {
-  int horizontal_offset;
-  int horizontal_lower_bound;
-  int horizontal_upper_bound;
-  //
-  int vertical_offset;
-  int vertical_lower_bound;
-  int vertical_upper_bound;
-  //
-  int horizontal_text;
-  int vertical_text;
-  //
-  int highlight_start_x;
-  int highlight_start_y;
-} Scroll;
-
-typedef struct {
   int x;
   int y;
 } Coord;
@@ -112,141 +96,6 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
     }
   }
   return -1;
-}
-
-// TODO: comment the solution (why, not what)
-// TODO: cleanup the solution
-// TODO: FIXME: jitteriness when highlighting from newline
-void handle_mouse_highlight(SDL_Window *window, SDL_Renderer *renderer,
-                            Texture **textures, int textures_count,
-                            Scroll *scroll, State *state) {
-  if (0 && !state->left_mouse_button_pressed || textures_count == 0) {
-    return;
-  }
-  int start_idx = -1;
-  int end_idx = textures_count;
-
-  int start_idx_offset_w = 0;
-  int start_idx_offset_h = 0;
-
-  int window_height = 0;
-  int window_width = 0;
-  (void)SDL_GetWindowSize(window, &window_width, &window_height);
-
-  int mouse_x = 0;
-  int mouse_y = 0;
-  (void)SDL_GetMouseState(&mouse_x, &mouse_y);
-
-  int highlight_start_x = scroll->highlight_start_x;
-  int highlight_start_y = scroll->highlight_start_y;
-  int highlight_end_x = mouse_x;
-  int highlight_end_y = mouse_y;
-
-  int abs_mouse_height_diff = abs(mouse_y - scroll->highlight_start_y);
-
-  // switch starting point with current mouse position, when
-  if (
-      // mouse is higher than starting point + 1 texture height
-      mouse_y <= scroll->highlight_start_y &&
-          abs_mouse_height_diff >= textures[0]->h
-      //
-      ||
-      // mouse is left of starting point and
-      // vertical diff is less than 1 texture height
-      mouse_x <= scroll->highlight_start_x &&
-          abs_mouse_height_diff < textures[0]->h) {
-    highlight_end_y = scroll->highlight_start_y;
-    highlight_start_y = mouse_y;
-    highlight_end_x = scroll->highlight_start_x;
-    highlight_start_x = mouse_x;
-  }
-
-  // mouse-highlighting
-  for (int i = 0; i < textures_count; i += 1) {
-
-    int texture_start_width =
-        HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
-    int texture_start_height =
-        VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
-
-    // NOTE: only render what fits on screen
-    if (!(texture_start_height <= window_height &&
-          texture_start_width <= window_width)) {
-      continue;
-    }
-
-    if (
-        // we find the token hit by starting point
-        texture_start_height <= highlight_start_y &&
-            highlight_start_y < texture_start_height + textures[i]->h &&
-            texture_start_width < highlight_start_x &&
-            highlight_start_x < texture_start_width + textures[i]->w
-        // we're past tokens (eg right of newline)
-        // and no starting point is set
-        || start_idx < 0 && texture_start_height <= highlight_start_y &&
-               highlight_start_y < texture_start_height + textures[i]->h &&
-               textures[i]->token->t == TOKEN_NEWLINE &&
-               texture_start_width + textures[i]->w < highlight_start_x) {
-      start_idx = i;
-      start_idx_offset_w = textures[i]->x;
-      start_idx_offset_h = textures[i]->y;
-    }
-
-    if (texture_start_height <= highlight_end_y &&
-            highlight_end_y < texture_start_height + textures[i]->h &&
-            highlight_end_x < texture_start_width ||
-        highlight_end_y < texture_start_height) {
-
-      end_idx = i;
-      break;
-    }
-  }
-
-  if (start_idx < 0) {
-    start_idx = 0;
-  }
-  for (int i = start_idx; i < end_idx; i += 1) {
-
-    int texture_start_width =
-        HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
-    int texture_start_height =
-        VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
-
-    int texture_char_size = textures[i]->w / textures[i]->token->vlen;
-    int highlight_start_offset = 0;
-    int hightlight_end_offset = 0;
-
-    if (i == start_idx) {
-      highlight_start_offset =
-          ((highlight_start_x - texture_start_width) -
-           (highlight_start_x - texture_start_width) % texture_char_size) %
-          textures[i]->w;
-    }
-    if (i + 1 == end_idx) {
-      hightlight_end_offset =
-          ((texture_start_width + textures[i]->w - highlight_end_x) -
-           (texture_start_width + textures[i]->w - highlight_end_x) %
-               texture_char_size) %
-          textures[i]->w;
-    }
-    // when newline, highlight up to window edge
-    if (textures[i]->token->t == TOKEN_NEWLINE) {
-      hightlight_end_offset =
-          -(window_width - highlight_start_offset - textures[i]->w);
-    }
-
-    SDL_Rect highlight_rect = {
-        texture_start_width + highlight_start_offset, texture_start_height,
-        textures[i]->w - (highlight_start_offset + hightlight_end_offset),
-        textures[i]->h};
-    SDL_Color prev = {0};
-    SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
-                           (Uint8 *)&prev.b, (Uint8 *)&prev.a);
-    SDL_SetRenderDrawColor(renderer, MOUSE_HIGHLIGHT.r, MOUSE_HIGHLIGHT.g,
-                           MOUSE_HIGHLIGHT.b, MOUSE_HIGHLIGHT.a);
-    SDL_RenderFillRect(renderer, &highlight_rect);
-    SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
-  }
 }
 
 void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
@@ -404,13 +253,7 @@ Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
 }
 
 int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
-                    Texture **textures, int textures_count, Scroll *scroll,
-                    State *state) {
-
-  if (0 && state->left_mouse_button_pressed) {
-    handle_mouse_highlight(window, renderer, textures, textures_count, scroll,
-                           state);
-  }
+                    Texture **textures, int textures_count, State *state) {
 
   handle_highlight(window, renderer, textures, textures_count, state);
 
@@ -441,7 +284,7 @@ int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
 int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                       SDL_Renderer *renderer, TTF_Font *font,
                       Texture **text_textures, int textures_count,
-                      Scroll *scroll, State *state) {
+                      State *state) {
 
   int event_count = 0;
   int err = 0;
@@ -499,15 +342,10 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         state->highlight_end_coord->y = mouse_y;
       }
 
-      printf("HERE: %d %d\n", state->highlight_textures_start_idx,
-             state->highlight_textures_end_idx);
-
     } else if (sdl_event.type == SDL_MOUSEBUTTONDOWN &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
                sdl_event.button.state == SDL_PRESSED) {
       state->left_mouse_button_pressed = true;
-      (void)SDL_GetMouseState(&scroll->highlight_start_x,
-                              &scroll->highlight_start_y);
       int mouse_x = 0;
       int mouse_y = 0;
       (void)SDL_GetMouseState(&mouse_x, &mouse_y);
@@ -589,8 +427,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     }
 
     SDL_RenderClear(renderer);
-    err = cpy_to_renderer(window, renderer, text_textures, textures_count,
-                          scroll, state);
+    err =
+        cpy_to_renderer(window, renderer, text_textures, textures_count, state);
     if (err != EXIT_SUCCESS) {
       state->keep_window_open = false;
       return event_count;
@@ -660,11 +498,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   SDL_RenderClear(renderer);
 
-  Scroll *scroll = calloc(1, sizeof(Scroll));
-
   int err = EXIT_SUCCESS;
-  err = cpy_to_renderer(window, renderer, text_textures, textures_count, scroll,
-                        state);
+  err = cpy_to_renderer(window, renderer, text_textures, textures_count, state);
   if (err != EXIT_SUCCESS) {
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
@@ -688,7 +523,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     SDL_Event sdl_event;
     handled_event_count =
         handle_sdl_events(window, sdl_event, renderer, font, text_textures,
-                          textures_count, scroll, state);
+                          textures_count, state);
     if (!state->keep_window_open) {
       break;
     }
@@ -707,7 +542,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
       SDL_RenderClear(renderer);
       err = cpy_to_renderer(window, renderer, text_textures, textures_count,
-                            scroll, state);
+                            state);
       if (err != EXIT_SUCCESS) {
         break;
       }
@@ -720,7 +555,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
       SDL_RenderClear(renderer);
       err = cpy_to_renderer(window, renderer, text_textures, textures_count,
-                            scroll, state);
+                            state);
       if (err != EXIT_SUCCESS) {
         break;
       }
@@ -741,9 +576,6 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   free_textures(text_textures, textures_count);
   free_tokens(tokens, tokens_count);
   free_contents(contents);
-  if (scroll != NULL) {
-    free(scroll);
-  }
   if (state != NULL) {
     if (state->highlight_start_coord != NULL) {
       free(state->highlight_start_coord);
