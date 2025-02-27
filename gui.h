@@ -189,24 +189,32 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
   int idx_local = idx;
   int direction = 1;
   if (textures[idx]->token->t == TOKEN_STRING &&
-      textures[idx]->token->vlen == 1 && *textures[idx]->token->v == '"') {
+      textures[idx]->token->vlen == 1 &&
+      (*textures[idx]->token->v == '"' || *textures[idx]->token->v == '\'')) {
+    char c = *textures[idx]->token->v;
 
-    if (idx + 1 < textures_count &&
-        textures[idx + 1]->token->t != TOKEN_STRING) {
+    enum TOKEN_TYPE token_type;
+    int direction_check_offset = 1;
+    while (idx + direction_check_offset < textures_count &&
+           (token_type = textures[idx + direction_check_offset]->token->t) &&
+           (token_type == TOKEN_SPACES || token_type == TOKEN_TABS ||
+            token_type == TOKEN_NEWLINE)) {
+      direction_check_offset += 1;
+    }
+
+    if (idx + direction_check_offset < textures_count &&
+        textures[idx + direction_check_offset]->token->t != TOKEN_STRING) {
       direction = -1;
     }
 
     while (0 <= idx_local && idx_local < textures_count) {
-      int token_type = textures[idx_local]->token->t;
-      if (token_type == TOKEN_STRING || token_type == TOKEN_SPACES ||
-          token_type == TOKEN_TABS || token_type == TOKEN_NEWLINE) {
-      } else {
+      idx_local += direction;
+      if (textures[idx_local]->token->vlen == 1 &&
+          textures[idx_local]->token->t == TOKEN_STRING &&
+          *(textures[idx_local]->token->v) == c) {
         break;
       }
-      idx_local += direction;
     }
-    // NOTE: we passed the string end, go back to quote mark
-    idx_local -= direction;
 
   } else if (textures[idx]->token->vlen == 1) {
     char c = *(textures[idx]->token->v);
@@ -282,26 +290,20 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
   idx += direction;
   idx_local -= direction;
 
+  if (idx > idx_local) {
+    int tmp = idx;
+    idx = idx_local;
+    idx_local = tmp;
+  }
+
   state->highlight_stationary_texture_idx = idx;
   state->highlight_moving_texture_idx = idx_local;
-
-  // mark coords to starting and ending of the
-  // corresponding tokens
-  if (idx <= idx_local) {
-    state->highlight_stationary_coord->x = textures[idx]->x;
-    state->highlight_stationary_coord->y = textures[idx]->y;
-    state->highlight_moving_coord->x =
-        textures[idx_local]->x + textures[idx_local]->w;
-    state->highlight_moving_coord->y =
-        textures[idx_local]->y + textures[idx_local]->h;
-  } else if (idx > idx_local) {
-    state->highlight_moving_coord->x = textures[idx]->x;
-    state->highlight_moving_coord->y = textures[idx]->y;
-    state->highlight_stationary_coord->x =
-        textures[idx_local]->x + textures[idx_local]->w;
-    state->highlight_stationary_coord->y =
-        textures[idx_local]->y + textures[idx_local]->h;
-  }
+  state->highlight_stationary_coord->x = textures[idx]->x;
+  state->highlight_stationary_coord->y = textures[idx]->y;
+  state->highlight_moving_coord->x =
+      textures[idx_local]->x + textures[idx_local]->w;
+  state->highlight_moving_coord->y =
+      textures[idx_local]->y + textures[idx_local]->h;
 }
 
 // allocs memory
