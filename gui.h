@@ -12,9 +12,8 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 
-// NOTE: neg to make scrolling up move page up and vice versa
-#define HORIZONTAL_SCROLL_MULT (-20)
-#define VERTICAL_SCROLL_MULT 20
+#define HORIZONTAL_SCROLL_MULT (-200)
+#define VERTICAL_SCROLL_MULT 50
 
 #define GUI_FONT "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
 #define DEFAULT_FONT_SIZE 20
@@ -25,7 +24,9 @@
 #define HORIZONTAL_PADDING 10
 #define VERTICAL_PADDING 10
 
-#define FRAME_DELAY 33 // in milliseconds; ~30FPS
+#define FRAME_DELAY 16 // in milliseconds; ~60FPS
+
+#define MILLISECOND 1
 
 int FONT_SIZE = DEFAULT_FONT_SIZE; // MAYBE: move to state
 
@@ -75,6 +76,8 @@ typedef struct {
   int highlight_moving_texture_idx;     // inclusive
   Coord *highlight_stationary_coord;
   Coord *highlight_moving_coord;
+  //
+  Uint64 last_mouse_click_tick;
 } State;
 
 int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
@@ -174,6 +177,147 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
     SDL_RenderFillRect(renderer, &highlight_rect);
     SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
   }
+}
+
+void handle_double_click(Texture **textures, int textures_count, int idx,
+                         State *state) {
+  if (idx < 0) {
+    return;
+  }
+  int idx_local = idx;
+  int direction = 1;
+  if (textures[idx]->token->t == TOKEN_STRING &&
+      textures[idx]->token->vlen == 1 &&
+      (*textures[idx]->token->v == '"' || *textures[idx]->token->v == '\'')) {
+    char c = *textures[idx]->token->v;
+
+    enum TOKEN_TYPE token_type;
+    int direction_check_offset = 1;
+    while (idx + direction_check_offset < textures_count &&
+           (token_type = textures[idx + direction_check_offset]->token->t) &&
+           (token_type == TOKEN_SPACES || token_type == TOKEN_TABS ||
+            token_type == TOKEN_NEWLINE)) {
+      direction_check_offset += 1;
+    }
+
+    if (idx + direction_check_offset < textures_count &&
+        textures[idx + direction_check_offset]->token->t != TOKEN_STRING) {
+      direction = -1;
+    }
+
+    // NOTE: boundaries are +1/-1, because we do `+= direction`
+    // right after loop check
+    while (0 < idx_local && idx_local < textures_count - 1) {
+      idx_local += direction;
+      if (textures[idx_local]->token->vlen == 1 &&
+          textures[idx_local]->token->t == TOKEN_STRING &&
+          *(textures[idx_local]->token->v) == c) {
+        break;
+      }
+    }
+
+    // NOTE: empty region, don't highlight
+    if (abs(idx_local - idx) < 2) {
+      return;
+    }
+
+  } else if (textures[idx]->token->vlen == 1) {
+    char c = *(textures[idx]->token->v);
+    int open_count = 0;
+    if (c != '(' && c != ')' && c != '[' && c != ']' && c != '{' && c != '}' &&
+        c != '<' && c != '>') {
+      // don't highlight anything
+      return;
+    }
+    if (c == ')' || c == ']' || c == '}' || c == '>') {
+      direction = -1;
+    }
+    char end_c;
+    switch (c) {
+    case ')':
+      end_c = '(';
+      direction = -1;
+      break;
+    case ']':
+      end_c = '[';
+      direction = -1;
+      break;
+    case '}':
+      end_c = '{';
+      direction = -1;
+      break;
+    case '>':
+      end_c = '<';
+      direction = -1;
+      break;
+    case '(':
+      end_c = ')';
+      break;
+    case '[':
+      end_c = ']';
+      break;
+    case '{':
+      end_c = '}';
+      break;
+    case '<':
+      end_c = '>';
+      break;
+    default:
+      fprintf(stderr, "unreachable - double-click handling");
+      return;
+    }
+    // NOTE: allow highlighting inside brackets as WORD, STRING, COMMENT, etc
+    enum TOKEN_TYPE token_type = textures[idx]->token->t;
+    while (0 <= idx_local && idx_local < textures_count) {
+      if (textures[idx_local]->token->vlen == 1 &&
+          *textures[idx_local]->token->v == end_c &&
+          textures[idx_local]->token->t == token_type && open_count == 1) {
+        break;
+      }
+      if (textures[idx_local]->token->vlen == 1 &&
+          *textures[idx_local]->token->v == c &&
+          textures[idx_local]->token->t == token_type) {
+        open_count += 1;
+      }
+      if (textures[idx_local]->token->vlen == 1 &&
+          *textures[idx_local]->token->v == end_c &&
+          textures[idx_local]->token->t == token_type && open_count > 1) {
+        open_count -= 1;
+      }
+      idx_local += direction;
+    }
+
+    // NOTE: empty region, don't highlight
+    if (abs(idx_local - idx) < 2) {
+      return;
+    }
+  } else {
+    // didn't match any highlighting criteria
+    // highlight current token
+    // for that increment the idx and idx_local
+    // so that below incr/decr works properly
+    idx -= direction;
+    idx_local += direction;
+  }
+
+  // exclude selection bounds and only select insides
+  idx += direction;
+  idx_local -= direction;
+
+  if (idx > idx_local) {
+    int tmp = idx;
+    idx = idx_local;
+    idx_local = tmp;
+  }
+
+  state->highlight_stationary_texture_idx = idx;
+  state->highlight_moving_texture_idx = idx_local;
+  state->highlight_stationary_coord->x = textures[idx]->x;
+  state->highlight_stationary_coord->y = textures[idx]->y;
+  state->highlight_moving_coord->x =
+      textures[idx_local]->x + textures[idx_local]->w;
+  state->highlight_moving_coord->y =
+      textures[idx_local]->y + textures[idx_local]->h;
 }
 
 // allocs memory
@@ -367,6 +511,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     } else if (sdl_event.type == SDL_MOUSEBUTTONDOWN &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
                sdl_event.button.state == SDL_PRESSED) {
+      Uint64 current_tick = SDL_GetTicks64();
       state->left_mouse_button_pressed = true;
       int mouse_x = 0;
       int mouse_y = 0;
@@ -387,6 +532,11 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         state->highlight_moving_coord->x = mouse_x;
         state->highlight_moving_coord->y = mouse_y;
       }
+
+      if (current_tick - state->last_mouse_click_tick <= 250 * MILLISECOND) {
+        handle_double_click(text_textures, textures_count, idx, state);
+      }
+      state->last_mouse_click_tick = current_tick;
 
     } else if (sdl_event.type == SDL_MOUSEBUTTONUP &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
@@ -536,8 +686,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   SDL_RenderPresent(renderer);
 
-  Uint32 start = SDL_GetTicks();
-  Uint32 end = SDL_GetTicks();
+  Uint32 start = SDL_GetTicks64();
+  Uint32 end = SDL_GetTicks64();
   float elapsed = 0;
 
   int handled_event_count = 0; // MAYBE: REMOVEME:
@@ -545,7 +695,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   state->keep_window_open = true;
   while (state->keep_window_open) {
 
-    start = SDL_GetTicks();
+    start = SDL_GetTicks64();
 
     SDL_Event sdl_event;
     handled_event_count =
@@ -588,7 +738,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       }
     }
 
-    end = SDL_GetTicks();
+    end = SDL_GetTicks64();
     elapsed = end - start;
     if (elapsed <= FRAME_DELAY) {
       SDL_Delay(FRAME_DELAY - elapsed);
