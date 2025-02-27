@@ -271,8 +271,11 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
 
   } else {
     // didn't match any highlighting criteria
-    // don't highlight anything
-    return;
+    // highlight current token
+    // for that increment the idx and idx_local
+    // so that below incr/decr works properly
+    idx -= direction;
+    idx_local += direction;
   }
 
   // exclude selection bounds and only select insides
@@ -284,14 +287,14 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
 
   // mark coords to starting and ending of the
   // corresponding tokens
-  if (idx < idx_local) {
+  if (idx <= idx_local) {
     state->highlight_stationary_coord->x = textures[idx]->x;
     state->highlight_stationary_coord->y = textures[idx]->y;
     state->highlight_moving_coord->x =
         textures[idx_local]->x + textures[idx_local]->w;
     state->highlight_moving_coord->y =
         textures[idx_local]->y + textures[idx_local]->h;
-  } else {
+  } else if (idx > idx_local) {
     state->highlight_moving_coord->x = textures[idx]->x;
     state->highlight_moving_coord->y = textures[idx]->y;
     state->highlight_stationary_coord->x =

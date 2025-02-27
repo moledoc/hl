@@ -50,7 +50,7 @@ Tool to put (colored) text on the screen.
 		- [x] better accuracy on highlighting
 		- [x] mouse scrolling highlight previously highlighted area, instead of moving along
 			 - [x] store beginning token instead of beginning mouse pos
-		- [ ] acme-inspired highlighting (inside quotes, parenthesis, brackets etc)
+		- [x] acme-inspired highlighting (inside quotes, parenthesis, brackets etc)
 	- [ ] copy-paste highlighted text
 	- [ ] soft-wrap text
 	- [ ] UTF handling
