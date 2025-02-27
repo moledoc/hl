@@ -43,7 +43,7 @@ Tool to put (colored) text on the screen.
 	- [ ] scrollbar (horizontal/vertical)
 	- [ ] ~~when font is resized, keep same place in view~~
 		- [x] smaller font increment instead
-	- [ ] highlighting text with mouse
+	- [x] highlighting text with mouse
 		- [x] token based highlighting
 		- [x] keep highlighting after letting go, stop highlighting after click
 		- [x] char based highlighting
@@ -51,8 +51,14 @@ Tool to put (colored) text on the screen.
 		- [x] mouse scrolling highlight previously highlighted area, instead of moving along
 			 - [x] store beginning token instead of beginning mouse pos
 		- [x] acme-inspired highlighting (inside quotes, parenthesis, brackets etc)
+		- [x] double-click to highlight a word
+		- [ ] triple-click to highlight a line
 	- [ ] copy-paste highlighted text
 	- [ ] soft-wrap text
+	- [ ] row and col numbers
+		- MAYBE: `jump to <path>:<line>:<col>` support
+	- [ ] text search
+	- [ ] 
 	- [ ] UTF handling
 	- [ ] able to specify font
 		- [ ] cmd args 
@@ -64,6 +70,8 @@ Tool to put (colored) text on the screen.
 		- TBD
 	- [ ] somoe vim-inspired keyboard shortcuts for navigation
 		- TBD
+	- [ ] MAYBE: AYBE: lsp integration
+	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
