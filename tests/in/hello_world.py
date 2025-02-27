@@ -33,4 +33,7 @@ is_date = Date.is_date_valid('11-09-2012')
 print(date2.to_string(), is_date)
 
 print(f"{date2.to_string()}")
+print("{[(a)]} {(]") # NOTE: try double-click highlighting on brackets
+# # NOTE: try double-click highlighting on brackets {[(a)]} {(]
+# print("{[(a)]} {(]") # NOTE: try double-click highlighting on brackets
 # this shouldn't be colored to string color

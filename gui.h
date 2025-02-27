@@ -264,20 +264,22 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
       fprintf(stderr, "unreachable - double-click handling");
       return;
     }
+    // NOTE: allow highlighting inside brackets as WORD, STRING, COMMENT, etc
+    enum TOKEN_TYPE token_type = textures[idx]->token->t;
     while (0 <= idx_local && idx_local < textures_count) {
       if (textures[idx_local]->token->vlen == 1 &&
           *textures[idx_local]->token->v == end_c &&
-          textures[idx_local]->token->t == TOKEN_WORD && open_count == 1) {
+          textures[idx_local]->token->t == token_type && open_count == 1) {
         break;
       }
       if (textures[idx_local]->token->vlen == 1 &&
           *textures[idx_local]->token->v == c &&
-          textures[idx_local]->token->t == TOKEN_WORD) {
+          textures[idx_local]->token->t == token_type) {
         open_count += 1;
       }
       if (textures[idx_local]->token->vlen == 1 &&
           *textures[idx_local]->token->v == end_c &&
-          textures[idx_local]->token->t == TOKEN_WORD && open_count > 1) {
+          textures[idx_local]->token->t == token_type && open_count > 1) {
         open_count -= 1;
       }
       idx_local += direction;
