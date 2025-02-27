@@ -216,6 +216,11 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
       }
     }
 
+    // NOTE: empty region, don't highlight
+    if (abs(idx_local - idx) < 2) {
+      return;
+    }
+
   } else if (textures[idx]->token->vlen == 1) {
     char c = *(textures[idx]->token->v);
     int open_count = 0;
@@ -277,6 +282,10 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
       idx_local += direction;
     }
 
+    // NOTE: empty region, don't highlight
+    if (abs(idx_local - idx) < 2) {
+      return;
+    }
   } else {
     // didn't match any highlighting criteria
     // highlight current token
