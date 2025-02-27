@@ -12,9 +12,8 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 
-// NOTE: neg to make scrolling up move page up and vice versa
-#define HORIZONTAL_SCROLL_MULT (-20)
-#define VERTICAL_SCROLL_MULT 20
+#define HORIZONTAL_SCROLL_MULT (-200)
+#define VERTICAL_SCROLL_MULT 50
 
 #define GUI_FONT "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
 #define DEFAULT_FONT_SIZE 20
@@ -25,7 +24,7 @@
 #define HORIZONTAL_PADDING 10
 #define VERTICAL_PADDING 10
 
-#define FRAME_DELAY 33 // in milliseconds; ~30FPS
+#define FRAME_DELAY 16 // in milliseconds; ~60FPS
 
 #define MILLISECOND 1
 
@@ -79,7 +78,6 @@ typedef struct {
   Coord *highlight_moving_coord;
   //
   Uint64 last_mouse_click_tick;
-
 } State;
 
 int texture_idx_from_mouse_pos(Texture **textures, int textures_count,

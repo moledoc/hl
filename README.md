@@ -58,7 +58,6 @@ Tool to put (colored) text on the screen.
 	- [ ] row and col numbers
 		- MAYBE: `jump to <path>:<line>:<col>` support
 	- [ ] text search
-	- [ ] 
 	- [ ] UTF handling
 	- [ ] able to specify font
 		- [ ] cmd args 
@@ -70,7 +69,7 @@ Tool to put (colored) text on the screen.
 		- TBD
 	- [ ] somoe vim-inspired keyboard shortcuts for navigation
 		- TBD
-	- [ ] MAYBE: AYBE: lsp integration
+	- [ ] MAYBE: MAYBE: lsp integration
 	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
 - [ ] building
 	- [x] `make
