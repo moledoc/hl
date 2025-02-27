@@ -187,10 +187,10 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
     return;
   }
   int idx_local = idx;
+  int direction = 1;
   if (textures[idx]->token->t == TOKEN_STRING &&
       textures[idx]->token->vlen == 1 && *textures[idx]->token->v == '"') {
 
-    int direction = 1;
     if (idx + 1 < textures_count &&
         textures[idx + 1]->token->t != TOKEN_STRING) {
       direction = -1;
@@ -200,17 +200,21 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
            textures[idx_local]->token->t == TOKEN_STRING) {
       idx_local += direction;
     }
-    // NOTE: we passed the string end, go back
-    // 2 steps: 1 to get to quote mark, 1 to only include quote mark
-    idx_local -= 2 * direction;
-    // NOTE: don't include quote
-    idx += direction;
+    // NOTE: we passed the string end, go back to quote mark
+    idx_local -= direction;
 
   } else if (textures[idx]->token->vlen == 1) {
+    char c = *(textures[idx]->token->v);
+
+    // don't highlight anything
+  } else {
+    return;
   }
 
-  // change stationary texture idx, so that we select inside
-  // excluding the bounds;
+  // exclude selection bounds and only select insides
+  idx += direction;
+  idx_local -= direction;
+
   state->highlight_stationary_texture_idx = idx;
   state->highlight_moving_texture_idx = idx_local;
 
