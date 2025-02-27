@@ -27,6 +27,8 @@
 
 #define FRAME_DELAY 33 // in milliseconds; ~30FPS
 
+#define MILLISECOND 1
+
 int FONT_SIZE = DEFAULT_FONT_SIZE; // MAYBE: move to state
 
 // TODO: improve colors
@@ -60,6 +62,7 @@ typedef struct {
   bool keep_window_open;
   bool refresh_tokens;
   bool file_modified;
+  Uint64 last_tick;
   //
   bool ctrl_pressed;
   bool shift_pressed;
@@ -173,6 +176,58 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
                            MOUSE_HIGHLIGHT.b, MOUSE_HIGHLIGHT.a);
     SDL_RenderFillRect(renderer, &highlight_rect);
     SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+  }
+}
+
+void handle_double_click(Texture **textures, int textures_count, int idx,
+                         State *state) {
+  if (idx < 0) {
+    return;
+  }
+  int idx_local = idx;
+  if (textures[idx]->token->t == TOKEN_STRING &&
+      textures[idx]->token->vlen == 1 && *textures[idx]->token->v == '"') {
+
+    int direction = 1;
+    if (idx + 1 < textures_count &&
+        textures[idx + 1]->token->t != TOKEN_STRING) {
+      direction = -1;
+    }
+
+    while (0 <= idx_local && idx_local < textures_count &&
+           textures[idx_local]->token->t == TOKEN_STRING) {
+      idx_local += direction;
+    }
+    // NOTE: we passed the string end, go back
+    // 2 steps: 1 to get to quote mark, 1 to only include quote mark
+    idx_local -= 2 * direction;
+    // NOTE: don't include quote
+    idx += direction;
+
+  } else if (textures[idx]->token->vlen == 1) {
+  }
+
+  // change stationary texture idx, so that we select inside
+  // excluding the bounds;
+  state->highlight_stationary_texture_idx = idx;
+  state->highlight_moving_texture_idx = idx_local;
+
+  // mark coords to starting and ending of the
+  // corresponding tokens
+  if (idx < idx_local) {
+    state->highlight_stationary_coord->x = textures[idx]->x;
+    state->highlight_stationary_coord->y = textures[idx]->y;
+    state->highlight_moving_coord->x =
+        textures[idx_local]->x + textures[idx_local]->w;
+    state->highlight_moving_coord->y =
+        textures[idx_local]->y + textures[idx_local]->h;
+  } else {
+    state->highlight_moving_coord->x = textures[idx]->x;
+    state->highlight_moving_coord->y = textures[idx]->y;
+    state->highlight_stationary_coord->x =
+        textures[idx_local]->x + textures[idx_local]->w;
+    state->highlight_stationary_coord->y =
+        textures[idx_local]->y + textures[idx_local]->h;
   }
 }
 
@@ -312,6 +367,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
   int err = 0;
 
   while (SDL_PollEvent(&sdl_event) > 0) {
+    Uint64 current_tick = SDL_GetTicks64();
     event_count += 1;
 
     SDL_RenderClear(renderer);
@@ -388,6 +444,10 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         state->highlight_moving_coord->y = mouse_y;
       }
 
+      if (current_tick - state->last_tick <= 250 * MILLISECOND) {
+        handle_double_click(text_textures, textures_count, idx, state);
+      }
+
     } else if (sdl_event.type == SDL_MOUSEBUTTONUP &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
                sdl_event.button.state == SDL_RELEASED) {
@@ -461,6 +521,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       return event_count;
     }
     SDL_RenderPresent(renderer);
+    state->last_tick = current_tick;
   }
   return event_count;
 }
@@ -536,8 +597,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   SDL_RenderPresent(renderer);
 
-  Uint32 start = SDL_GetTicks();
-  Uint32 end = SDL_GetTicks();
+  Uint32 start = SDL_GetTicks64();
+  Uint32 end = SDL_GetTicks64();
   float elapsed = 0;
 
   int handled_event_count = 0; // MAYBE: REMOVEME:
@@ -545,7 +606,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   state->keep_window_open = true;
   while (state->keep_window_open) {
 
-    start = SDL_GetTicks();
+    start = SDL_GetTicks64();
 
     SDL_Event sdl_event;
     handled_event_count =
@@ -588,7 +649,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       }
     }
 
-    end = SDL_GetTicks();
+    end = SDL_GetTicks64();
     elapsed = end - start;
     if (elapsed <= FRAME_DELAY) {
       SDL_Delay(FRAME_DELAY - elapsed);
