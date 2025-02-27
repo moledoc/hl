@@ -205,9 +205,68 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
 
   } else if (textures[idx]->token->vlen == 1) {
     char c = *(textures[idx]->token->v);
+    int open_count = 0;
+    if (c != '(' && c != ')' && c != '[' && c != ']' && c != '{' && c != '}' &&
+        c != '<' && c != '>') {
+      // don't highlight anything
+      return;
+    }
+    if (c == ')' || c == ']' || c == '}' || c == '>') {
+      direction = -1;
+    }
+    char end_c;
+    switch (c) {
+    case ')':
+      end_c = '(';
+      direction = -1;
+      break;
+    case ']':
+      end_c = '[';
+      direction = -1;
+      break;
+    case '}':
+      end_c = '{';
+      direction = -1;
+      break;
+    case '>':
+      end_c = '<';
+      direction = -1;
+      break;
+    case '(':
+      end_c = ')';
+      break;
+    case '[':
+      end_c = ']';
+      break;
+    case '{':
+      end_c = '}';
+      break;
+    case '<':
+      end_c = '>';
+      break;
+    default:
+      fprintf(stderr, "unreachable - double-click handling");
+      return;
+    }
+    while (0 <= idx_local && idx_local < textures_count) {
+      if (textures[idx_local]->token->vlen == 1 &&
+          *textures[idx_local]->token->v == end_c && open_count == 1) {
+        break;
+      }
+      if (textures[idx_local]->token->vlen == 1 &&
+          *textures[idx_local]->token->v == c) {
+        open_count += 1;
+      }
+      if (textures[idx_local]->token->vlen == 1 &&
+          *textures[idx_local]->token->v == end_c && open_count > 1) {
+        open_count -= 1;
+      }
+      idx_local += direction;
+    }
 
-    // don't highlight anything
   } else {
+    // didn't match any highlighting criteria
+    // don't highlight anything
     return;
   }
 
