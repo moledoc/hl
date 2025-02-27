@@ -205,7 +205,9 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
       direction = -1;
     }
 
-    while (0 <= idx_local && idx_local < textures_count) {
+    // NOTE: boundaries are +1/-1, because we do `+= direction`
+    // right after loop check
+    while (0 < idx_local && idx_local < textures_count - 1) {
       idx_local += direction;
       if (textures[idx_local]->token->vlen == 1 &&
           textures[idx_local]->token->t == TOKEN_STRING &&
