@@ -17,7 +17,7 @@
 
 #define GUI_FONT "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
 #define DEFAULT_FONT_SIZE 20
-#define FONT_INCREMENT 2
+#define FONT_INCREMENT 4
 #define FONT_LOWER_BOUND 12
 #define FONT_UPPER_BOUND 64
 
@@ -586,7 +586,6 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
       TTF_SetFontSize(font, FONT_SIZE);
       state->refresh_tokens = true;
-
       // FONT RESIZE +/- END
 
       // FONT RESIZE TO DEFAULT START
@@ -690,7 +689,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   Uint32 end = SDL_GetTicks64();
   float elapsed = 0;
 
-  int handled_event_count = 0; // MAYBE: REMOVEME:
+  int handled_event_count = 0;
 
   state->keep_window_open = true;
   while (state->keep_window_open) {
@@ -743,7 +742,14 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     if (elapsed <= FRAME_DELAY) {
       SDL_Delay(FRAME_DELAY - elapsed);
     }
-    SDL_RenderPresent(renderer); // NOTE: always present current renderer
+    // NOTE: render only when event happened, otherwise don't present.
+    // Aim is to improve idle performance.
+    // However, if this doesn't feel good, remove the if-statement
+    // and just present render.
+    if (handled_event_count > 0) {
+      SDL_RenderPresent(
+          renderer); // MAYBE: NOTE: always present current renderer
+    }
   }
 
   SDL_DestroyWindow(window);
