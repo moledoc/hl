@@ -62,7 +62,6 @@ typedef struct {
   bool keep_window_open;
   bool refresh_tokens;
   bool file_modified;
-  Uint64 last_tick;
   //
   bool ctrl_pressed;
   bool shift_pressed;
@@ -78,6 +77,9 @@ typedef struct {
   int highlight_moving_texture_idx;     // inclusive
   Coord *highlight_stationary_coord;
   Coord *highlight_moving_coord;
+  //
+  Uint64 last_mouse_click_tick;
+
 } State;
 
 int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
@@ -367,7 +369,6 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
   int err = 0;
 
   while (SDL_PollEvent(&sdl_event) > 0) {
-    Uint64 current_tick = SDL_GetTicks64();
     event_count += 1;
 
     SDL_RenderClear(renderer);
@@ -423,6 +424,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     } else if (sdl_event.type == SDL_MOUSEBUTTONDOWN &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
                sdl_event.button.state == SDL_PRESSED) {
+      Uint64 current_tick = SDL_GetTicks64();
       state->left_mouse_button_pressed = true;
       int mouse_x = 0;
       int mouse_y = 0;
@@ -444,9 +446,10 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         state->highlight_moving_coord->y = mouse_y;
       }
 
-      if (current_tick - state->last_tick <= 250 * MILLISECOND) {
+      if (current_tick - state->last_mouse_click_tick <= 250 * MILLISECOND) {
         handle_double_click(text_textures, textures_count, idx, state);
       }
+      state->last_mouse_click_tick = current_tick;
 
     } else if (sdl_event.type == SDL_MOUSEBUTTONUP &&
                sdl_event.button.button == SDL_BUTTON_LEFT &&
@@ -521,7 +524,6 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       return event_count;
     }
     SDL_RenderPresent(renderer);
-    state->last_tick = current_tick;
   }
   return event_count;
 }
