@@ -196,8 +196,13 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
       direction = -1;
     }
 
-    while (0 <= idx_local && idx_local < textures_count &&
-           textures[idx_local]->token->t == TOKEN_STRING) {
+    while (0 <= idx_local && idx_local < textures_count) {
+      int token_type = textures[idx_local]->token->t;
+      if (token_type == TOKEN_STRING || token_type == TOKEN_SPACES ||
+          token_type == TOKEN_TABS || token_type == TOKEN_NEWLINE) {
+      } else {
+        break;
+      }
       idx_local += direction;
     }
     // NOTE: we passed the string end, go back to quote mark
