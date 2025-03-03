@@ -147,6 +147,8 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
   }
   for (int i = start_idx; i <= end_idx; i += 1) {
 
+    // NOTE: texture_start_width doesn't account for scroll,
+    // because we want to leave highlight in place when horizontal scrolling
     int texture_start_width = HORIZONTAL_PADDING + textures[i]->x;
     int texture_start_height =
         VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
@@ -155,15 +157,15 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
     int highlight_start_offset = 0;
     int hightlight_end_offset = 0;
 
-    int width_diff = highlight_start_x - texture_start_width;
-    if (i == start_idx && width_diff > 0) {
+    int start_diff = highlight_start_x - texture_start_width;
+    if (i == start_idx && start_diff > 0) {
       highlight_start_offset =
-          (width_diff - width_diff % texture_char_size) % textures[i]->w;
+          clamp(start_diff - start_diff % texture_char_size, 0, textures[i]->w);
     }
-    int height_diff = texture_start_width + textures[i]->w - highlight_end_x;
-    if (i == end_idx && height_diff > 0) {
+    int end_diff = texture_start_width + textures[i]->w - highlight_end_x;
+    if (i == end_idx && end_diff > 0) {
       hightlight_end_offset =
-          (height_diff - height_diff % texture_char_size) % textures[i]->w;
+          clamp(end_diff - end_diff % texture_char_size, 0, textures[i]->w);
     }
 
     SDL_Rect highlight_rect = {
@@ -314,12 +316,12 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
 
   state->highlight_stationary_texture_idx = idx;
   state->highlight_moving_texture_idx = idx_local;
-  state->highlight_stationary_coord->x = textures[idx]->x;
-  state->highlight_stationary_coord->y = textures[idx]->y;
+  state->highlight_stationary_coord->x = HORIZONTAL_PADDING + textures[idx]->x;
+  state->highlight_stationary_coord->y = VERTICAL_PADDING + textures[idx]->y;
   state->highlight_moving_coord->x =
-      textures[idx_local]->x + textures[idx_local]->w;
+      HORIZONTAL_PADDING + textures[idx_local]->x + textures[idx_local]->w;
   state->highlight_moving_coord->y =
-      textures[idx_local]->y + textures[idx_local]->h;
+      VERTICAL_PADDING + textures[idx_local]->y + textures[idx_local]->h;
 }
 
 void handle_vertical_scrollbar(SDL_Renderer *renderer, State *state) {
