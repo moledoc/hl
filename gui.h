@@ -22,10 +22,10 @@
 #define FONT_UPPER_BOUND 64
 
 #define VERTICAL_SCROLLBAR_WIDTH 15
-#define HORIZONTAL_SCROLLBAR_HEIGHT 0
+#define HORIZONTAL_SCROLLBAR_HEIGHT 15
 
 #define HORIZONTAL_PADDING (VERTICAL_SCROLLBAR_WIDTH + 10)
-#define VERTICAL_PADDING (HORIZONTAL_SCROLLBAR_HEIGHT + 10)
+#define VERTICAL_PADDING (10)
 
 #define FRAME_DELAY 16 // in milliseconds; ~60FPS
 
@@ -95,7 +95,7 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
 
     if (
         // mouse is out of window to the top
-        mouse_y < VERTICAL_PADDING ||
+        mouse_y < 0 ||
         // check based on cursor being on the same line
         texture_start_height <= mouse_y &&
             mouse_y < texture_start_height + textures[i]->h &&
@@ -339,15 +339,41 @@ void handle_vertical_scrollbar(SDL_Renderer *renderer, State *state) {
   SDL_RenderFillRect(renderer, &vertical_scrollbar_bg_rect);
 
   // vertical scrollbar foreground
-  int hundred_percent = state->window_height;
+  int height_hundred_percent = state->window_height;
   SDL_Rect vertical_scrollbar_fg_rect = {
       0,
-      hundred_percent * (-state->vertical_scroll) / state->max_vertical_offset,
+      height_hundred_percent * (-state->vertical_scroll) /
+          state->max_vertical_offset,
       VERTICAL_SCROLLBAR_WIDTH,
-      hundred_percent * state->window_height / state->max_vertical_offset};
+      height_hundred_percent * state->window_height /
+          state->max_vertical_offset};
   SDL_SetRenderDrawColor(renderer, SCROLLBAR_FG.r, SCROLLBAR_FG.g,
                          SCROLLBAR_FG.b, SCROLLBAR_FG.a);
   SDL_RenderFillRect(renderer, &vertical_scrollbar_fg_rect);
+
+  // horizontal scrollbar background
+  if (state->horizontal_scroll != 0) {
+    SDL_Rect horizontal_scrollbar_bg_rect = {
+        VERTICAL_SCROLLBAR_WIDTH,
+        state->window_height - HORIZONTAL_SCROLLBAR_HEIGHT, state->window_width,
+        HORIZONTAL_SCROLLBAR_HEIGHT};
+    SDL_SetRenderDrawColor(renderer, SCROLLBAR_BG.r, SCROLLBAR_BG.g,
+                           SCROLLBAR_BG.b, SCROLLBAR_BG.a);
+    SDL_RenderFillRect(renderer, &horizontal_scrollbar_bg_rect);
+
+    // horizontal scrollbar foreground
+    int width_hundred_percent = state->window_width;
+    SDL_Rect horizontal_scrollbar_fg_rect = {
+        width_hundred_percent * (-state->horizontal_scroll) /
+            state->max_horizontal_offset,
+        state->window_height - HORIZONTAL_SCROLLBAR_HEIGHT,
+        width_hundred_percent * state->window_height /
+            state->max_horizontal_offset,
+        HORIZONTAL_SCROLLBAR_HEIGHT};
+    SDL_SetRenderDrawColor(renderer, SCROLLBAR_FG.r, SCROLLBAR_FG.g,
+                           SCROLLBAR_FG.b, SCROLLBAR_FG.a);
+    SDL_RenderFillRect(renderer, &horizontal_scrollbar_fg_rect);
+  }
 
   SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
 }
