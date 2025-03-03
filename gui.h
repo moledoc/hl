@@ -21,7 +21,7 @@
 #define FONT_LOWER_BOUND 12
 #define FONT_UPPER_BOUND 64
 
-#define HORIZONTAL_PADDING 10
+#define HORIZONTAL_PADDING (15 + 10)
 #define VERTICAL_PADDING 10
 
 #define FRAME_DELAY 16 // in milliseconds; ~60FPS
@@ -90,7 +90,7 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
 
     if (
         // mouse is out of window to the top
-        mouse_y < 0 ||
+        mouse_y < VERTICAL_PADDING ||
         // check based on cursor being on the same line
         texture_start_height <= mouse_y &&
             mouse_y < texture_start_height + textures[i]->h &&
@@ -101,7 +101,7 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
                 //
                 ||
                 // mouse is out of window to the left
-                mouse_x < 0
+                mouse_x < HORIZONTAL_PADDING
                 //
                 ||
                 // mouse is out of window to the right
