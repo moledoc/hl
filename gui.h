@@ -24,8 +24,8 @@
 #define VERTICAL_SCROLLBAR_WIDTH 15
 #define HORIZONTAL_SCROLLBAR_HEIGHT 15
 
-#define HORIZONTAL_PADDING (VERTICAL_SCROLLBAR_WIDTH + 10)
-#define VERTICAL_PADDING (10)
+#define HORIZONTAL_PADDING (VERTICAL_SCROLLBAR_WIDTH + 5)
+#define VERTICAL_PADDING (5)
 
 #define FRAME_DELAY 16 // in milliseconds; ~60FPS
 
@@ -155,18 +155,15 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
     int highlight_start_offset = 0;
     int hightlight_end_offset = 0;
 
-    if (i == start_idx) {
+    int width_diff = highlight_start_x - texture_start_width;
+    if (i == start_idx && width_diff > 0) {
       highlight_start_offset =
-          ((highlight_start_x - texture_start_width) -
-           (highlight_start_x - texture_start_width) % texture_char_size) %
-          textures[i]->w;
+          (width_diff - width_diff % texture_char_size) % textures[i]->w;
     }
-    if (i == end_idx) {
+    int height_diff = texture_start_width + textures[i]->w - highlight_end_x;
+    if (i == end_idx && height_diff > 0) {
       hightlight_end_offset =
-          ((texture_start_width + textures[i]->w - highlight_end_x) -
-           (texture_start_width + textures[i]->w - highlight_end_x) %
-               texture_char_size) %
-          textures[i]->w;
+          (height_diff - height_diff % texture_char_size) % textures[i]->w;
     }
 
     SDL_Rect highlight_rect = {
