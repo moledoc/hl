@@ -67,10 +67,13 @@ Tool to put (colored) text on the screen.
 		- [ ] on the fly
 	- [ ] some acme-inspired mouse actions
 		- TBD
-	- [ ] somoe vim-inspired keyboard shortcuts for navigation
+	- [ ] some vim-inspired keyboard shortcuts for navigation
 		- TBD
 	- [ ] MAYBE: MAYBE: lsp integration
 	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
+	- [ ] MAYBE: possible performance optimization
+		- tokens in map, instead of list
+		- compute values/obj only once, that don't need to be recomputed
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
