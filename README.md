@@ -74,7 +74,8 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
 	- [ ] MAYBE: possible performance optimization
 		- [ ] when font changes scale by factor first, and when the font persists for some time, calculate the textures again.
-			- MAYBE: only go with font scaling
+			- TODO: fix scaled font, eg drawing on screen, highlighting
+				- although, we only need scaling while font size is not settled - maybe separate intermediate step would be better in for this
 		- instead of list (of textures/tokens):
 			- linked list
 			- map

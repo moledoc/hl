@@ -721,11 +721,15 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->max_vertical_offset =
           (float)state->max_vertical_offset / state->font_scale_factor;
 
+      state->font_scale_factor =
+          BASE_FONT_SIZE != DEFAULT_FONT_SIZE
+              ? (float)DEFAULT_FONT_SIZE / (float)FONT_SIZE
+              : 1.0f;
+      // NOTE: only update FONT_SIZE so we don't pass the condition
+      // FONT_SIZE==BASE_FONT_SIZE below
       FONT_SIZE = DEFAULT_FONT_SIZE;
-      BASE_FONT_SIZE = DEFAULT_FONT_SIZE;
-      TTF_SetFontSize(font, FONT_SIZE);
+      TTF_SetFontSize(font, DEFAULT_FONT_SIZE);
       state->is_font_resized = true;
-      state->font_scale_factor = 1.0f;
       state->font_size_unchanged_since = SDL_GetTicks64();
       // FONT RESIZE TO DEFAULT END
 
@@ -857,36 +861,33 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       if (err != EXIT_SUCCESS) {
         break;
       }
-      // NOTE: if we need to refresh tokens (eg font resize)
-      // but we manually went back to default size
-      // before re-calculating the textures,
-      // then don't recalculate the tokens
-    } else if (state->is_font_resized && FONT_SIZE == DEFAULT_FONT_SIZE) {
-      state->is_font_resized = false;
-      BASE_FONT_SIZE = FONT_SIZE;
-      state->font_scale_factor = 1.0f;
 
       // NOTE: if we need to refresh tokens (eg font resize)
       // and the font hasn't changed in x seconds
       // recalculate the textures for better quality text
+      // NOTE: if we go back to default font size, update textures right away
     } else if (state->is_font_resized &&
-               10 * SECOND <
-                   SDL_GetTicks64() - state->font_size_unchanged_since) {
+               (2 * SECOND <
+                    SDL_GetTicks64() - state->font_size_unchanged_since ||
+                FONT_SIZE == DEFAULT_FONT_SIZE)) {
       state->is_font_resized = false;
-      BASE_FONT_SIZE = FONT_SIZE;
-      state->font_scale_factor = 1.0f;
 
-      // MAYBE: TODO: make update_textures parallel safe
-      text_textures =
-          update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
-                          tokens_count, &textures_count, state);
+      // NOTE: only recalc textures if font is different from base font
+      if (BASE_FONT_SIZE != FONT_SIZE) {
+        BASE_FONT_SIZE = FONT_SIZE;
+        state->font_scale_factor = 1.0f;
+        // MAYBE: TODO: make update_textures parallel safe
+        text_textures =
+            update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
+                            tokens_count, &textures_count, state);
 
-      SDL_RenderClear(renderer);
-      err = cpy_to_renderer(renderer, text_textures, textures_count, state);
-      if (err != EXIT_SUCCESS) {
-        break;
+        SDL_RenderClear(renderer);
+        err = cpy_to_renderer(renderer, text_textures, textures_count, state);
+        if (err != EXIT_SUCCESS) {
+          break;
+        }
+        SDL_RenderPresent(renderer);
       }
-      SDL_RenderPresent(renderer);
     }
 
     end = SDL_GetTicks64();
