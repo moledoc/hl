@@ -53,7 +53,7 @@ Tool to put (colored) text on the screen.
 			 - [x] store beginning token instead of beginning mouse pos
 		- [x] acme-inspired highlighting (inside quotes, parenthesis, brackets etc)
 		- [x] double-click to highlight a word
-		- [ ] triple-click to highlight a line
+		- [ ] triple-click or double click beginning/end of line to highlight a line
 	- [ ] copy-paste highlighted text
 	- [ ] soft-wrap text
 	- [ ] row and col numbers
@@ -73,7 +73,9 @@ Tool to put (colored) text on the screen.
 	- [ ] MAYBE: MAYBE: lsp integration
 	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
 	- [ ] MAYBE: possible performance optimization
-		- tokens in map, instead of list
+		- instead of list (of textures/tokens):
+			- linked list
+			- map
 		- compute values/obj only once, that don't need to be recomputed
 - [ ] building
 	- [x] `make

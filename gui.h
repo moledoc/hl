@@ -93,6 +93,20 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
     int texture_start_height =
         VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
 
+    // NOTE: only render what fits on window
+    // continue if before window
+    // break if after window
+    if (texture_start_height + textures[i]->h < 0) {
+      continue;
+    } else if (state->window_height <= texture_start_height) {
+      // NOTE: mouse is out of window to the bottom
+      // use the last texture index that was still inside the window
+      if (mouse_y > state->window_height) {
+        return i - 1;
+      }
+      break;
+    }
+
     if (
         // mouse is out of window to the top
         mouse_y < 0 ||
@@ -158,12 +172,18 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
     int hightlight_end_offset = 0;
 
     int start_diff = highlight_start_x - texture_start_width;
-    if (i == start_idx && start_diff > 0) {
+    if (i == start_idx && start_diff > 0 &&
+        // only trim highlight start if mouse is inside the token
+        texture_start_width <= highlight_start_x &&
+        highlight_start_x <= texture_start_width + textures[i]->w) {
       highlight_start_offset =
           clamp(start_diff - start_diff % texture_char_size, 0, textures[i]->w);
     }
     int end_diff = texture_start_width + textures[i]->w - highlight_end_x;
-    if (i == end_idx && end_diff > 0) {
+    if (i == end_idx && end_diff > 0 &&
+        // only trim highlight end if mouse is inside the token
+        texture_start_width <= highlight_end_x &&
+        highlight_start_x <= texture_start_width + textures[i]->w) {
       hightlight_end_offset =
           clamp(end_diff - end_diff % texture_char_size, 0, textures[i]->w);
     }
@@ -488,11 +508,16 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     int texture_start_height =
         VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
 
-    // NOTE: only render what fits on screen
-    if (!(texture_start_height <= state->window_height &&
-          texture_start_width <= state->window_width)) {
+    // NOTE: only render what fits on window
+    // continue if before window
+    // break if after window
+    if (texture_start_height + textures[i]->h < 0) {
       continue;
+    } else if (state->window_height < texture_start_height) {
+      break;
     }
+
+    // NOTE: don't render newline char
     if (textures[i]->token->t == TOKEN_NEWLINE) {
       continue;
     }
