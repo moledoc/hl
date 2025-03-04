@@ -212,7 +212,18 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
                            (Uint8 *)&prev.b, (Uint8 *)&prev.a);
     SDL_SetRenderDrawColor(renderer, MOUSE_HIGHLIGHT.r, MOUSE_HIGHLIGHT.g,
                            MOUSE_HIGHLIGHT.b, MOUSE_HIGHLIGHT.a);
-    scale_rect(&highlight_rect, state->font_scale_factor);
+
+    // NOTE: if font_scale_factor is 1
+    // then scale text_rect without padding
+    // as we want to keep it the same
+    if (state->font_scale_factor != 1.0f) {
+      highlight_rect.x -= HORIZONTAL_PADDING;
+      highlight_rect.y -= VERTICAL_PADDING;
+      scale_rect(&highlight_rect, state->font_scale_factor);
+      highlight_rect.x += HORIZONTAL_PADDING;
+      highlight_rect.y += VERTICAL_PADDING;
+    }
+
     SDL_RenderFillRect(renderer, &highlight_rect);
     SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
   }
@@ -552,7 +563,17 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
 
     SDL_Rect text_rect = {texture_start_width, texture_start_height,
                           textures[i]->w, textures[i]->h};
-    scale_rect(&text_rect, state->font_scale_factor);
+
+    // NOTE: if font_scale_factor is 1
+    // then scale text_rect without padding
+    // as we want to keep it the same
+    if (state->font_scale_factor != 1.0f) {
+      text_rect.x -= HORIZONTAL_PADDING;
+      text_rect.y -= VERTICAL_PADDING;
+      scale_rect(&text_rect, state->font_scale_factor);
+      text_rect.x += HORIZONTAL_PADDING;
+      text_rect.y += VERTICAL_PADDING;
+    }
     SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
   }
 
