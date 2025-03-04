@@ -324,7 +324,7 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
       VERTICAL_PADDING + textures[idx_local]->y + textures[idx_local]->h;
 }
 
-void handle_vertical_scrollbar(SDL_Renderer *renderer, State *state) {
+void handle_scrollbars(SDL_Renderer *renderer, State *state) {
 
   SDL_Color prev = {0};
   SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
@@ -479,7 +479,7 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
                     int textures_count, State *state) {
 
   handle_highlight(renderer, textures, textures_count, state);
-  handle_vertical_scrollbar(renderer, state);
+  handle_scrollbars(renderer, state);
 
   for (int i = 0; i < textures_count; i += 1) {
 
