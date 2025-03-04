@@ -30,8 +30,10 @@
 #define FRAME_DELAY 16 // in milliseconds; ~60FPS
 
 #define MILLISECOND 1
+#define SECOND (1000 * MILLISECOND)
 
-int FONT_SIZE = DEFAULT_FONT_SIZE; // MAYBE: move to state
+int BASE_FONT_SIZE = DEFAULT_FONT_SIZE; // MAYBE: move to state
+int FONT_SIZE = DEFAULT_FONT_SIZE;      // MAYBE: move to state
 
 // TODO: improve colors
 const SDL_Color BLACK = {0, 0, 0, 255};
@@ -64,8 +66,11 @@ typedef struct {
   int window_height;
   //
   bool keep_window_open;
-  bool refresh_tokens;
   bool file_modified;
+  //
+  bool is_font_resized;
+  float font_scale_factor;
+  Uint64 font_size_unchanged_since;
   //
   bool ctrl_pressed;
   bool shift_pressed;
@@ -85,13 +90,22 @@ typedef struct {
   Uint64 last_mouse_click_tick;
 } State;
 
+void scale_rect(SDL_Rect *rect, float scale_factor) {
+  rect->x = (float)rect->x * scale_factor;
+  rect->y = (float)rect->y * scale_factor;
+  rect->w = (float)rect->w * scale_factor;
+  rect->h = (float)rect->h * scale_factor;
+}
+
 int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
                                int mouse_x, int mouse_y, State *state) {
   for (int i = 0; i < textures_count; i += 1) {
     int texture_start_width =
-        HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
+        (HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll) *
+        state->font_scale_factor;
     int texture_start_height =
-        VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
+        (VERTICAL_PADDING + textures[i]->y + state->vertical_scroll) *
+        state->font_scale_factor;
 
     // NOTE: only render what fits on window
     // continue if before window
@@ -198,6 +212,7 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
                            (Uint8 *)&prev.b, (Uint8 *)&prev.a);
     SDL_SetRenderDrawColor(renderer, MOUSE_HIGHLIGHT.r, MOUSE_HIGHLIGHT.g,
                            MOUSE_HIGHLIGHT.b, MOUSE_HIGHLIGHT.a);
+    scale_rect(&highlight_rect, state->font_scale_factor);
     SDL_RenderFillRect(renderer, &highlight_rect);
     SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
   }
@@ -529,6 +544,7 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
 
     SDL_Rect text_rect = {texture_start_width, texture_start_height,
                           textures[i]->w, textures[i]->h};
+    scale_rect(&text_rect, state->font_scale_factor);
     SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
   }
 
@@ -659,7 +675,9 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       FONT_SIZE += FONT_INCREMENT * sign(sdl_event.wheel.y);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
       TTF_SetFontSize(font, FONT_SIZE);
-      state->refresh_tokens = true;
+      state->is_font_resized = true;
+      state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
+      state->font_size_unchanged_since = SDL_GetTicks64();
       // FONT RESIZE WITH MOUSEWHEEL END
 
       // FONT RESIZE +/- START
@@ -668,12 +686,27 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_EQUALS ||
                 sdl_event.key.keysym.sym == SDLK_MINUS)) {
+
+      // NOTE: revert font_scaling
+      state->max_horizontal_offset =
+          (float)state->max_horizontal_offset / state->font_scale_factor;
+      state->max_vertical_offset =
+          (float)state->max_vertical_offset / state->font_scale_factor;
+
       int old_font_size = FONT_SIZE;
       FONT_SIZE += FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
                    FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_MINUS);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
       TTF_SetFontSize(font, FONT_SIZE);
-      state->refresh_tokens = true;
+      state->is_font_resized = true;
+      state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
+      state->font_size_unchanged_since = SDL_GetTicks64();
+
+      // NOTE: apply new font scaling
+      state->max_horizontal_offset =
+          (float)state->max_horizontal_offset * state->font_scale_factor;
+      state->max_vertical_offset =
+          (float)state->max_vertical_offset * state->font_scale_factor;
       // FONT RESIZE +/- END
 
       // FONT RESIZE TO DEFAULT START
@@ -681,9 +714,19 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_EQUALS) {
+
+      // NOTE: revert font_scaling
+      state->max_horizontal_offset =
+          (float)state->max_horizontal_offset / state->font_scale_factor;
+      state->max_vertical_offset =
+          (float)state->max_vertical_offset / state->font_scale_factor;
+
       FONT_SIZE = DEFAULT_FONT_SIZE;
+      BASE_FONT_SIZE = DEFAULT_FONT_SIZE;
       TTF_SetFontSize(font, FONT_SIZE);
-      state->refresh_tokens = true;
+      state->is_font_resized = true;
+      state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
+      state->font_size_unchanged_since = SDL_GetTicks64();
       // FONT RESIZE TO DEFAULT END
     } else if (sdl_event.type == SDL_WINDOWEVENT) {
       (void)SDL_GetWindowSize(window, &state->window_width,
@@ -754,6 +797,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   state->highlight_stationary_coord = calloc(1, sizeof(Coord));
   state->highlight_moving_coord = calloc(1, sizeof(Coord));
   (void)SDL_GetWindowSize(window, &state->window_width, &state->window_height);
+  state->font_scale_factor = 1.0f;
+  state->font_size_unchanged_since = SDL_GetTicks64();
 
   int textures_count = 0;
   Texture **text_textures = tokens_to_textures(
@@ -808,8 +853,24 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       if (err != EXIT_SUCCESS) {
         break;
       }
-    } else if (state->refresh_tokens) {
-      state->refresh_tokens = false;
+      // NOTE: if we need to refresh tokens (eg font resize)
+      // but we manually went back to default size
+      // before re-calculating the textures,
+      // then don't recalculate the tokens
+    } else if (state->is_font_resized && FONT_SIZE == DEFAULT_FONT_SIZE) {
+      state->is_font_resized = false;
+      BASE_FONT_SIZE = FONT_SIZE;
+      state->font_scale_factor = 1.0f;
+
+      // NOTE: if we need to refresh tokens (eg font resize)
+      // and the font hasn't changed in x seconds
+      // recalculate the textures for better quality text
+    } else if (state->is_font_resized &&
+               10 * SECOND <
+                   SDL_GetTicks64() - state->font_size_unchanged_since) {
+      state->is_font_resized = false;
+      BASE_FONT_SIZE = FONT_SIZE;
+      state->font_scale_factor = 1.0f;
 
       text_textures =
           update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
@@ -820,6 +881,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       if (err != EXIT_SUCCESS) {
         break;
       }
+      SDL_RenderPresent(renderer);
     }
 
     end = SDL_GetTicks64();

@@ -73,6 +73,8 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [ ] MAYBE: MAYBE: lsp integration
 	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
 	- [ ] MAYBE: possible performance optimization
+		- [ ] when font changes scale by factor first, and when the font persists for some time, calculate the textures again.
+			- MAYBE: only go with font scaling
 		- instead of list (of textures/tokens):
 			- linked list
 			- map
