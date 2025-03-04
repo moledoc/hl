@@ -110,9 +110,11 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
     // NOTE: only render what fits on window
     // continue if before window
     // break if after window
-    if (texture_start_height + textures[i]->h < 0) {
+    if (state->font_scale_factor * (texture_start_height + textures[i]->h) <
+        0) {
       continue;
-    } else if (state->window_height <= texture_start_height) {
+    } else if (state->window_height <=
+               state->font_scale_factor * texture_start_height) {
       // NOTE: mouse is out of window to the bottom
       // use the last texture index that was still inside the window
       if (mouse_y > state->window_height) {
@@ -550,9 +552,11 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     // NOTE: only render what fits on window
     // continue if before window
     // break if after window
-    if (texture_start_height + textures[i]->h < 0) {
+    if (state->font_scale_factor * (texture_start_height + textures[i]->h) <
+        0) {
       continue;
-    } else if (state->window_height < texture_start_height) {
+    } else if (state->window_height <=
+               state->font_scale_factor * texture_start_height) {
       break;
     }
 
@@ -701,32 +705,21 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       // FONT RESIZE WITH MOUSEWHEEL START
     } else if (state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
                sdl_event.wheel.y != 0) {
-      FONT_SIZE += FONT_INCREMENT * sign(sdl_event.wheel.y);
-      FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
-      TTF_SetFontSize(font, FONT_SIZE);
-      state->is_font_resized = true;
-      state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
-      state->font_size_unchanged_since = SDL_GetTicks64();
-      // FONT RESIZE WITH MOUSEWHEEL END
 
-      // FONT RESIZE +/- START
-    } else if (state->ctrl_pressed && !state->shift_pressed &&
-               sdl_event.type == SDL_KEYDOWN &&
-               sdl_event.key.state == SDL_PRESSED &&
-               (sdl_event.key.keysym.sym == SDLK_EQUALS ||
-                sdl_event.key.keysym.sym == SDLK_MINUS)) {
-
-      // NOTE: revert font_scaling
+      // NOTE: revert font scaling on state vars
       state->max_horizontal_offset =
           (float)state->max_horizontal_offset / state->font_scale_factor;
       state->max_vertical_offset =
           (float)state->max_vertical_offset / state->font_scale_factor;
+      state->horizontal_scroll =
+          (float)state->horizontal_scroll / state->font_scale_factor;
+      state->vertical_scroll =
+          (float)state->vertical_scroll / state->font_scale_factor;
 
-      int old_font_size = FONT_SIZE;
-      FONT_SIZE += FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
-                   FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_MINUS);
+      FONT_SIZE += FONT_INCREMENT * sign(sdl_event.wheel.y);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
       TTF_SetFontSize(font, FONT_SIZE);
+
       state->is_font_resized = true;
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
       state->font_size_unchanged_since = SDL_GetTicks64();
@@ -736,6 +729,49 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
           (float)state->max_horizontal_offset * state->font_scale_factor;
       state->max_vertical_offset =
           (float)state->max_vertical_offset * state->font_scale_factor;
+      state->horizontal_scroll =
+          (float)state->horizontal_scroll * state->font_scale_factor;
+      state->vertical_scroll =
+          (float)state->vertical_scroll * state->font_scale_factor;
+
+      // FONT RESIZE WITH MOUSEWHEEL END
+
+      // FONT RESIZE +/- START
+    } else if (state->ctrl_pressed && !state->shift_pressed &&
+               sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               (sdl_event.key.keysym.sym == SDLK_EQUALS ||
+                sdl_event.key.keysym.sym == SDLK_MINUS)) {
+
+      // NOTE: revert font_scaling on state vars
+      state->max_horizontal_offset =
+          (float)state->max_horizontal_offset / state->font_scale_factor;
+      state->max_vertical_offset =
+          (float)state->max_vertical_offset / state->font_scale_factor;
+      state->horizontal_scroll =
+          (float)state->horizontal_scroll / state->font_scale_factor;
+      state->vertical_scroll =
+          (float)state->vertical_scroll / state->font_scale_factor;
+
+      int old_font_size = FONT_SIZE;
+      FONT_SIZE += FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
+                   FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_MINUS);
+      FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
+      TTF_SetFontSize(font, FONT_SIZE);
+
+      state->is_font_resized = true;
+      state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
+      state->font_size_unchanged_since = SDL_GetTicks64();
+
+      // NOTE: apply new font scaling
+      state->max_horizontal_offset =
+          (float)state->max_horizontal_offset * state->font_scale_factor;
+      state->max_vertical_offset =
+          (float)state->max_vertical_offset * state->font_scale_factor;
+      state->horizontal_scroll =
+          (float)state->horizontal_scroll * state->font_scale_factor;
+      state->vertical_scroll =
+          (float)state->vertical_scroll * state->font_scale_factor;
       // FONT RESIZE +/- END
 
       // FONT RESIZE TO DEFAULT START
@@ -744,11 +780,15 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_EQUALS) {
 
-      // NOTE: revert font_scaling
+      // NOTE: revert font scaling on state vars
       state->max_horizontal_offset =
           (float)state->max_horizontal_offset / state->font_scale_factor;
       state->max_vertical_offset =
           (float)state->max_vertical_offset / state->font_scale_factor;
+      state->horizontal_scroll =
+          (float)state->horizontal_scroll / state->font_scale_factor;
+      state->vertical_scroll =
+          (float)state->vertical_scroll / state->font_scale_factor;
 
       state->font_scale_factor =
           BASE_FONT_SIZE != DEFAULT_FONT_SIZE
