@@ -725,12 +725,16 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       BASE_FONT_SIZE = DEFAULT_FONT_SIZE;
       TTF_SetFontSize(font, FONT_SIZE);
       state->is_font_resized = true;
-      state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
+      state->font_scale_factor = 1.0f;
       state->font_size_unchanged_since = SDL_GetTicks64();
       // FONT RESIZE TO DEFAULT END
-    } else if (sdl_event.type == SDL_WINDOWEVENT) {
+
+      // WINDOW RESIZE START
+    } else if (sdl_event.type == SDL_WINDOWEVENT &&
+               sdl_event.window.event == SDL_WINDOWEVENT_RESIZED) {
       (void)SDL_GetWindowSize(window, &state->window_width,
                               &state->window_height);
+      // WINDOW RESIZE END
     }
 
     SDL_RenderClear(renderer);
@@ -872,6 +876,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       BASE_FONT_SIZE = FONT_SIZE;
       state->font_scale_factor = 1.0f;
 
+      // MAYBE: TODO: make update_textures parallel safe
       text_textures =
           update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
                           tokens_count, &textures_count, state);
