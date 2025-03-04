@@ -21,8 +21,11 @@
 #define FONT_LOWER_BOUND 12
 #define FONT_UPPER_BOUND 64
 
-#define HORIZONTAL_PADDING 10
-#define VERTICAL_PADDING 10
+#define VERTICAL_SCROLLBAR_WIDTH 15
+#define HORIZONTAL_SCROLLBAR_HEIGHT 15
+
+#define HORIZONTAL_PADDING (VERTICAL_SCROLLBAR_WIDTH + 5)
+#define VERTICAL_PADDING (5)
 
 #define FRAME_DELAY 16 // in milliseconds; ~60FPS
 
@@ -39,6 +42,8 @@ const SDL_Color YELLOW = {255, 200, 0, 255};
 const SDL_Color MAGENTA = {255, 0, 255, 255};
 const SDL_Color GREY = {128, 128, 128, 255};
 const SDL_Color MOUSE_HIGHLIGHT = {190, 240, 255, 128};
+const SDL_Color SCROLLBAR_BG = {192, 192, 192, 64};
+const SDL_Color SCROLLBAR_FG = {128, 128, 128, 128};
 
 typedef struct {
   struct SDL_Texture *texture;
@@ -101,7 +106,7 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
                 //
                 ||
                 // mouse is out of window to the left
-                mouse_x < 0
+                mouse_x < HORIZONTAL_PADDING
                 //
                 ||
                 // mouse is out of window to the right
@@ -114,8 +119,8 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
   return -1;
 }
 
-void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
-                      Texture **textures, int textures_count, State *state) {
+void handle_highlight(SDL_Renderer *renderer, Texture **textures,
+                      int textures_count, State *state) {
   if (
       // stationary token index was neg
       state->highlight_stationary_texture_idx < 0 ||
@@ -142,6 +147,8 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
   }
   for (int i = start_idx; i <= end_idx; i += 1) {
 
+    // NOTE: texture_start_width doesn't account for scroll,
+    // because we want to leave highlight in place when horizontal scrolling
     int texture_start_width = HORIZONTAL_PADDING + textures[i]->x;
     int texture_start_height =
         VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
@@ -150,18 +157,15 @@ void handle_highlight(SDL_Window *window, SDL_Renderer *renderer,
     int highlight_start_offset = 0;
     int hightlight_end_offset = 0;
 
-    if (i == start_idx) {
+    int start_diff = highlight_start_x - texture_start_width;
+    if (i == start_idx && start_diff > 0) {
       highlight_start_offset =
-          ((highlight_start_x - texture_start_width) -
-           (highlight_start_x - texture_start_width) % texture_char_size) %
-          textures[i]->w;
+          clamp(start_diff - start_diff % texture_char_size, 0, textures[i]->w);
     }
-    if (i == end_idx) {
+    int end_diff = texture_start_width + textures[i]->w - highlight_end_x;
+    if (i == end_idx && end_diff > 0) {
       hightlight_end_offset =
-          ((texture_start_width + textures[i]->w - highlight_end_x) -
-           (texture_start_width + textures[i]->w - highlight_end_x) %
-               texture_char_size) %
-          textures[i]->w;
+          clamp(end_diff - end_diff % texture_char_size, 0, textures[i]->w);
     }
 
     SDL_Rect highlight_rect = {
@@ -312,12 +316,65 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
 
   state->highlight_stationary_texture_idx = idx;
   state->highlight_moving_texture_idx = idx_local;
-  state->highlight_stationary_coord->x = textures[idx]->x;
-  state->highlight_stationary_coord->y = textures[idx]->y;
+  state->highlight_stationary_coord->x = HORIZONTAL_PADDING + textures[idx]->x;
+  state->highlight_stationary_coord->y = VERTICAL_PADDING + textures[idx]->y;
   state->highlight_moving_coord->x =
-      textures[idx_local]->x + textures[idx_local]->w;
+      HORIZONTAL_PADDING + textures[idx_local]->x + textures[idx_local]->w;
   state->highlight_moving_coord->y =
-      textures[idx_local]->y + textures[idx_local]->h;
+      VERTICAL_PADDING + textures[idx_local]->y + textures[idx_local]->h;
+}
+
+void handle_scrollbars(SDL_Renderer *renderer, State *state) {
+
+  SDL_Color prev = {0};
+  SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                         (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+
+  // vertical scrollbar background
+  SDL_Rect vertical_scrollbar_bg_rect = {0, 0, VERTICAL_SCROLLBAR_WIDTH,
+                                         state->window_height};
+  SDL_SetRenderDrawColor(renderer, SCROLLBAR_BG.r, SCROLLBAR_BG.g,
+                         SCROLLBAR_BG.b, SCROLLBAR_BG.a);
+  SDL_RenderFillRect(renderer, &vertical_scrollbar_bg_rect);
+
+  // vertical scrollbar foreground
+  int height_hundred_percent = state->window_height;
+  SDL_Rect vertical_scrollbar_fg_rect = {
+      0,
+      height_hundred_percent * (-state->vertical_scroll) /
+          state->max_vertical_offset,
+      VERTICAL_SCROLLBAR_WIDTH,
+      height_hundred_percent * state->window_height /
+          state->max_vertical_offset};
+  SDL_SetRenderDrawColor(renderer, SCROLLBAR_FG.r, SCROLLBAR_FG.g,
+                         SCROLLBAR_FG.b, SCROLLBAR_FG.a);
+  SDL_RenderFillRect(renderer, &vertical_scrollbar_fg_rect);
+
+  // horizontal scrollbar background
+  if (state->horizontal_scroll != 0) {
+    SDL_Rect horizontal_scrollbar_bg_rect = {
+        VERTICAL_SCROLLBAR_WIDTH,
+        state->window_height - HORIZONTAL_SCROLLBAR_HEIGHT, state->window_width,
+        HORIZONTAL_SCROLLBAR_HEIGHT};
+    SDL_SetRenderDrawColor(renderer, SCROLLBAR_BG.r, SCROLLBAR_BG.g,
+                           SCROLLBAR_BG.b, SCROLLBAR_BG.a);
+    SDL_RenderFillRect(renderer, &horizontal_scrollbar_bg_rect);
+
+    // horizontal scrollbar foreground
+    int width_hundred_percent = state->window_width;
+    SDL_Rect horizontal_scrollbar_fg_rect = {
+        width_hundred_percent * (-state->horizontal_scroll) /
+            state->max_horizontal_offset,
+        state->window_height - HORIZONTAL_SCROLLBAR_HEIGHT,
+        width_hundred_percent * state->window_height /
+            state->max_horizontal_offset,
+        HORIZONTAL_SCROLLBAR_HEIGHT};
+    SDL_SetRenderDrawColor(renderer, SCROLLBAR_FG.r, SCROLLBAR_FG.g,
+                           SCROLLBAR_FG.b, SCROLLBAR_FG.a);
+    SDL_RenderFillRect(renderer, &horizontal_scrollbar_fg_rect);
+  }
+
+  SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
 }
 
 // allocs memory
@@ -418,10 +475,11 @@ Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
                             textures_count, state);
 }
 
-int cpy_to_renderer(SDL_Window *window, SDL_Renderer *renderer,
-                    Texture **textures, int textures_count, State *state) {
+int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
+                    int textures_count, State *state) {
 
-  handle_highlight(window, renderer, textures, textures_count, state);
+  handle_highlight(renderer, textures, textures_count, state);
+  handle_scrollbars(renderer, state);
 
   for (int i = 0; i < textures_count; i += 1) {
 
@@ -603,8 +661,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     }
 
     SDL_RenderClear(renderer);
-    err =
-        cpy_to_renderer(window, renderer, text_textures, textures_count, state);
+    err = cpy_to_renderer(renderer, text_textures, textures_count, state);
     if (err != EXIT_SUCCESS) {
       state->keep_window_open = false;
       return event_count;
@@ -675,7 +732,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   SDL_RenderClear(renderer);
 
   int err = EXIT_SUCCESS;
-  err = cpy_to_renderer(window, renderer, text_textures, textures_count, state);
+  err = cpy_to_renderer(renderer, text_textures, textures_count, state);
   if (err != EXIT_SUCCESS) {
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
@@ -717,8 +774,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
                           tokens_count, &textures_count, state);
 
       SDL_RenderClear(renderer);
-      err = cpy_to_renderer(window, renderer, text_textures, textures_count,
-                            state);
+      err = cpy_to_renderer(renderer, text_textures, textures_count, state);
       if (err != EXIT_SUCCESS) {
         break;
       }
@@ -730,8 +786,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
                           tokens_count, &textures_count, state);
 
       SDL_RenderClear(renderer);
-      err = cpy_to_renderer(window, renderer, text_textures, textures_count,
-                            state);
+      err = cpy_to_renderer(renderer, text_textures, textures_count, state);
       if (err != EXIT_SUCCESS) {
         break;
       }

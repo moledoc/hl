@@ -40,7 +40,8 @@ Tool to put (colored) text on the screen.
 		- [x] extension: horizontal scrolling only when text doesn't fit the screen
 		- [x] extension: able to specify scrolling factor
 		- [ ] extension: snap to view if no vertical scrolling, when already scrolled
-	- [ ] scrollbar (horizontal/vertical)
+	- [x] scrollbar (horizontal/vertical)
+		- [ ] acme inspired movements on scrollbar
 	- [ ] ~~when font is resized, keep same place in view~~
 		- [x] smaller font increment instead
 	- [x] highlighting text with mouse
@@ -67,10 +68,13 @@ Tool to put (colored) text on the screen.
 		- [ ] on the fly
 	- [ ] some acme-inspired mouse actions
 		- TBD
-	- [ ] somoe vim-inspired keyboard shortcuts for navigation
+	- [ ] some vim-inspired keyboard shortcuts for navigation
 		- TBD
 	- [ ] MAYBE: MAYBE: lsp integration
 	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
+	- [ ] MAYBE: possible performance optimization
+		- tokens in map, instead of list
+		- compute values/obj only once, that don't need to be recomputed
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
