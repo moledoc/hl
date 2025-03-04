@@ -39,7 +39,7 @@ Tool to put (colored) text on the screen.
 	- [x] bounded horizontal/vertical scrolling
 		- [x] extension: horizontal scrolling only when text doesn't fit the screen
 		- [x] extension: able to specify scrolling factor
-		- [ ] extension: snap to view if no vertical scrolling, when already scrolled
+		- [x] extension: snap back if text fits on screen, but horizontal scroll is non-zero
 	- [x] scrollbar (horizontal/vertical)
 		- [ ] acme inspired movements on scrollbar
 	- [ ] ~~when font is resized, keep same place in view~~

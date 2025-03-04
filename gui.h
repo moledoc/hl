@@ -470,6 +470,11 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
   state->max_horizontal_offset = max_horizontal_offset;
   state->max_vertical_offset = local_vertical_offset;
 
+  // NOTE: snap back if text fits on screen, but horizontal scroll is non-zero
+  if (max_horizontal_offset < state->window_width) {
+    state->horizontal_scroll = 0;
+  }
+
   return textures;
 }
 
