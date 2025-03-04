@@ -456,6 +456,14 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
       return NULL;
     }
 
+    /*
+      worst to best scaled font
+      SDL_ScaleModeNearest < nearest pixel sampling>
+      SDL_ScaleModeLinear < linear filtering>
+      SDL_ScaleModeBest < anisotropic filtering>
+    */
+    SDL_SetTextureScaleMode(text_texture, SDL_ScaleModeBest);
+
     Texture *tp = calloc(1, sizeof(Texture));
     tp->texture = text_texture;
     tp->token = tokens[i];
