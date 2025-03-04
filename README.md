@@ -1,7 +1,7 @@
 # hl
 
 
-Tool to put (colored) text on the screen.
+Text displaying tool (to enhance acme workflow) - might become something else in the future.
 
 ## Why
 
