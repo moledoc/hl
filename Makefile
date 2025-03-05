@@ -25,4 +25,4 @@ debug: dirs
     # gdb --args ./bin/debugging tests/manual_cases.txt
 
 build: dirs
-	clang -o ./bin/hl ./main.c -I/usr/include/SDL2 -D_REENTRANT -lSDL2 -lSDL2_ttf
+	clang -o ./bin/hl ./main.c -I/usr/include/SDL2 -D_REENTRANT -lSDL2 -lSDL2_ttf -lm
