@@ -156,6 +156,7 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
   return -1;
 }
 
+// FIXME: when in scaling mode, mouse highlighting is not accurate
 void handle_highlight(SDL_Renderer *renderer, Texture **textures,
                       int textures_count, State *state) {
   if (
@@ -897,7 +898,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       // recalculate the textures for better quality text
       // NOTE: if we go back to default font size, update textures right away
     } else if (state->is_font_resized &&
-               (3 * SECOND <
+               (1 * SECOND <
                     SDL_GetTicks64() - state->font_size_unchanged_since ||
                 FONT_SIZE == DEFAULT_FONT_SIZE)) {
       state->is_font_resized = false;
