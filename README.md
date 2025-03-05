@@ -34,7 +34,6 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- [x] ctrl+plus(or ctrl+equal for convenience)/ctrl+minus
 		- [x] ctrl+mouse-wheel
 		- [x] reset to default
-		- [ ] MAYBE: font resize keeps the same tokens in the window (as much as possible)
 	- [x] keyword based highlighting in GUI
 		- [x] multi-line strings are not properly handling newline chars
 	- [x] bounded horizontal/vertical scrolling
@@ -74,14 +73,11 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [ ] MAYBE: MAYBE: lsp integration
 	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
 	- [ ] MAYBE: possible performance optimization
-		- [ ] when font changes scale by factor first, and when the font persists for some time, calculate the textures again.
-			- REVIEWME: currently hacking some solution together, need to check whether there is some sensible refactoring that should be made
-			- FIXME: scroll jumping
-			- FIXME: gaps in highlighting
-		- instead of list (of textures/tokens):
+		- [x] when font changes scale by factor first, and when the font persists for some time, calculate the textures again.
+		- MAYBE: instead of list (of textures/tokens):
 			- linked list
 			- map
-		- compute values/obj only once, that don't need to be recomputed
+		- MAYBE: compute values/obj only once, that don't need to be recomputed
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
