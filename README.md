@@ -73,10 +73,11 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [ ] MAYBE: MAYBE: lsp integration
 	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
 	- [ ] MAYBE: possible performance optimization
-		- instead of list (of textures/tokens):
+		- [x] when font changes scale by factor first, and when the font persists for some time, calculate the textures again.
+		- MAYBE: instead of list (of textures/tokens):
 			- linked list
 			- map
-		- compute values/obj only once, that don't need to be recomputed
+		- MAYBE: compute values/obj only once, that don't need to be recomputed
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
