@@ -182,6 +182,7 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
     highlight_start_x = state->highlight_moving_coord->x;
     highlight_end_x = state->highlight_stationary_coord->x;
   }
+
   for (int i = start_idx; i <= end_idx; i += 1) {
 
     // NOTE: texture_start_width doesn't account for scroll,
@@ -896,13 +897,33 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       // recalculate the textures for better quality text
       // NOTE: if we go back to default font size, update textures right away
     } else if (state->is_font_resized &&
-               (10 * SECOND <
+               (3 * SECOND <
                     SDL_GetTicks64() - state->font_size_unchanged_since ||
                 FONT_SIZE == DEFAULT_FONT_SIZE)) {
       state->is_font_resized = false;
 
       // NOTE: only recalc textures if font is different from base font
       if (BASE_FONT_SIZE != FONT_SIZE) {
+
+        // NOTE: update highlight coord pos to leave highlight in place
+        state->highlight_stationary_coord->x =
+            ceil((float)state->highlight_stationary_coord->x *
+                 state->font_scale_factor);
+        state->highlight_moving_coord->x = ceil(
+            (float)state->highlight_moving_coord->x * state->font_scale_factor);
+
+        // NOTE: update max horizontal/vertical offset for scrollbar
+        state->max_horizontal_offset = ceil(
+            (float)state->max_horizontal_offset * state->font_scale_factor);
+        state->max_vertical_offset =
+            ceil((float)state->max_vertical_offset * state->font_scale_factor);
+
+        // NOTE: update horizontal/vertical scroll to leave view in place
+        state->horizontal_scroll =
+            ceil((float)state->horizontal_scroll * state->font_scale_factor);
+        state->vertical_scroll =
+            ceil((float)state->vertical_scroll * state->font_scale_factor);
+
         BASE_FONT_SIZE = FONT_SIZE;
         state->font_scale_factor = 1.0f;
         // MAYBE: TODO: make update_textures parallel safe
