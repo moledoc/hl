@@ -23,12 +23,16 @@ static const char *TOKEN_NAMES[] = {
     "TOKEN_CODE_KEYWORD", "TOKEN_COMMENT_KEYWORD", "TOKEN_COMMENT",
     "TOKEN_NEWLINE",      "TOKEN_SPACES",          "TOKEN_TABS"};
 
+enum SCOPE_TYPE { SCOPE_NONE = 0, SCOPE_START, SCOPE_END };
+
 int TAB_WIDTH = 4;
 
 typedef struct {
   enum TOKEN_TYPE t;
   char *v;
   int vlen;
+  enum SCOPE_TYPE s;
+  int s_until;
 } Token;
 
 typedef struct {
@@ -236,6 +240,128 @@ void handle_comment(Token **tokens, int *offset, int tokens_count,
   *offset -= 1; // NOTE: account for loop iteration
 }
 
+int handle_scope_brackets(Token **tokens, int offset, int tokens_count,
+                          bool is_string_bracket) {
+  char c = *(tokens[offset]->v);
+  char end_c;
+  switch (c) {
+  case '(':
+    end_c = ')';
+    break;
+  case '[':
+    end_c = ']';
+    break;
+  case '{':
+    end_c = '}';
+    break;
+  case '<':
+    end_c = '>';
+    break;
+  default:
+    fprintf(stderr, "unreachable - bracket scope");
+    return -1;
+  }
+  int open_count = 0;
+  for (; 0 <= offset && offset < tokens_count; offset += 1) {
+    if (!is_string_bracket && tokens[offset]->t == TOKEN_STRING) {
+      continue;
+    }
+    if (tokens[offset]->vlen == 1 && *tokens[offset]->v == end_c &&
+        open_count == 1) {
+      return offset;
+    }
+    if (tokens[offset]->vlen == 1 && *tokens[offset]->v == c) {
+      open_count += 1;
+    }
+    if (tokens[offset]->vlen == 1 && *tokens[offset]->v == end_c &&
+        open_count > 1) {
+      open_count -= 1;
+    }
+  }
+  return -1;
+}
+
+// TODO: clean up the code
+// FIXME: unclosed bracket in string behaves weirdly
+void handle_scope(Token **tokens, int *offset, int tokens_count) {
+  char c = *tokens[*offset]->v;
+  if (*offset < 0 ||
+      !(c == '\'' || c == '"' || c == '`' || c == '(' || c == '[' || c == '{' ||
+        c == '<') ||
+      // REVIEWME: ignore single quote in comments, because english
+      (tokens[*offset]->t == TOKEN_COMMENT && c == '\'') ||
+      // NOTE: already processed
+      (tokens[*offset]->s != SCOPE_NONE)) {
+    return;
+  }
+
+  tokens[*offset]->s = SCOPE_START;
+  int s_until = *offset;
+  int local_offset = *offset;
+
+  if (tokens[*offset]->s != SCOPE_NONE && c == '\'' || c == '"' || c == '`') {
+    local_offset += 1;
+    while (local_offset < tokens_count) {
+
+      if (tokens[local_offset]->vlen == 1 && *tokens[local_offset]->v == c &&
+          ((local_offset - 1 > -1 &&
+            *tokens[local_offset - 1]->v !=
+                '\\') || // NOTE: \\ before closing quote
+           (local_offset - 2 > -1 && *tokens[local_offset - 1]->v == '\\' &&
+            *tokens[local_offset - 2]->v ==
+                '\\'))) { // NOTE: no \ before closing quote
+        break;
+      }
+      local_offset += 1;
+    }
+
+    // NOTE: scope string brackets separately
+    char cc;
+    for (int i = *offset + 1; i < local_offset; i += 1) {
+      if (tokens[i]->vlen > 1) {
+        continue;
+      }
+      cc = *(tokens[i]->v);
+
+      if (cc == '(' || cc == '[' || cc == '{' || cc == '<') {
+
+        tokens[i]->s = SCOPE_START;
+        int s_until = i;
+        int local_i_offset = i;
+
+        // NOTE: tokens count as the nr of tokens until end of string
+        // to keep the bracket search inside the string
+        local_i_offset = handle_scope_brackets(tokens, i, local_offset, true);
+
+        if (local_i_offset >= local_offset || local_i_offset < 0) {
+          // NOTE: not closed string bracket scope is not highlighted
+          tokens[s_until]->s = SCOPE_NONE;
+          tokens[s_until]->s_until = s_until;
+        } else if (local_i_offset < local_offset) {
+          tokens[local_i_offset]->s = SCOPE_END;
+          tokens[local_i_offset]->s_until = s_until;
+          tokens[s_until]->s_until = local_i_offset;
+        }
+      }
+    }
+  } else if (tokens[*offset]->s != SCOPE_NONE && c == '(' || c == '[' ||
+             c == '{' || c == '<') {
+    local_offset =
+        handle_scope_brackets(tokens, local_offset, tokens_count, false);
+  }
+
+  if (local_offset >= tokens_count || local_offset < 0 ||
+      local_offset == *offset) {
+    // NOTE: not closed scope is not highlighted
+    tokens[s_until]->s = SCOPE_NONE;
+    tokens[s_until]->s_until = s_until;
+  } else if (local_offset < tokens_count) {
+    tokens[local_offset]->s = SCOPE_END;
+    tokens[local_offset]->s_until = s_until;
+    tokens[s_until]->s_until = local_offset;
+  }
+}
+
 // tokenize takes in content, its length and tokenizer configuration
 // and produces tokens based on that, token count is returned through
 // tokens_count variable. allocs memory
@@ -339,7 +465,8 @@ Token **tokenize(char *contents, int contents_length,
 
       // STRING start
     } else if (tokenizer_config->color_strings && tokens[offset]->vlen == 1 &&
-               (*tokens[offset]->v == '\'' || *tokens[offset]->v == '"')) {
+               (*tokens[offset]->v == '\'' || *tokens[offset]->v == '"' ||
+                *tokens[offset]->v == '`')) {
       handle_string(tokens, &offset, *tokens_count);
       // STRING end
 
@@ -361,9 +488,12 @@ Token **tokenize(char *contents, int contents_length,
       handle_comment(tokens, &offset, *tokens_count,
                      tokenizer_config->block_comment, tokenizer_config);
       // BLOCK_COMMENT end
-
-      // END
     }
+  }
+
+  // NOTE: scope processing
+  for (int offset = 0; offset < *tokens_count; offset += 1) {
+    handle_scope(tokens, &offset, *tokens_count);
   }
 
   // NOTE: if we dont end with newline token,

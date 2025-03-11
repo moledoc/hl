@@ -283,129 +283,21 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
     return;
   }
   int idx_local = idx;
-  int direction = 1;
-  if (textures[idx]->token->t == TOKEN_STRING &&
-      textures[idx]->token->vlen == 1 &&
-      (*textures[idx]->token->v == '"' || *textures[idx]->token->v == '\'')) {
-    char c = *textures[idx]->token->v;
+  if (textures[idx]->token->s != SCOPE_NONE) {
 
-    enum TOKEN_TYPE token_type;
-    int direction_check_offset = 1;
-    while (idx + direction_check_offset < textures_count &&
-           (token_type = textures[idx + direction_check_offset]->token->t) &&
-           (token_type == TOKEN_SPACES || token_type == TOKEN_TABS ||
-            token_type == TOKEN_NEWLINE)) {
-      direction_check_offset += 1;
-    }
-
-    if (idx + direction_check_offset < textures_count &&
-        textures[idx + direction_check_offset]->token->t != TOKEN_STRING) {
-      direction = -1;
-    }
-
-    // NOTE: boundaries are +1/-1, because we do `+= direction`
-    // right after loop check
-    while (0 < idx_local && idx_local < textures_count - 1) {
-      idx_local += direction;
-      if (textures[idx_local]->token->vlen == 1 &&
-          textures[idx_local]->token->t == TOKEN_STRING &&
-          *(textures[idx_local]->token->v) == c) {
-        break;
-      }
-    }
-
-    // NOTE: empty region, don't highlight
-    if (abs(idx_local - idx) < 2) {
-      return;
-    }
-
-  } else if (textures[idx]->token->vlen == 1) {
-    char c = *(textures[idx]->token->v);
-    int open_count = 0;
-    if (c != '(' && c != ')' && c != '[' && c != ']' && c != '{' && c != '}' &&
-        c != '<' && c != '>') {
-      // don't highlight anything
-      return;
-    }
-    if (c == ')' || c == ']' || c == '}' || c == '>') {
-      direction = -1;
-    }
-    char end_c;
-    switch (c) {
-    case ')':
-      end_c = '(';
-      direction = -1;
-      break;
-    case ']':
-      end_c = '[';
-      direction = -1;
-      break;
-    case '}':
-      end_c = '{';
-      direction = -1;
-      break;
-    case '>':
-      end_c = '<';
-      direction = -1;
-      break;
-    case '(':
-      end_c = ')';
-      break;
-    case '[':
-      end_c = ']';
-      break;
-    case '{':
-      end_c = '}';
-      break;
-    case '<':
-      end_c = '>';
-      break;
-    default:
-      fprintf(stderr, "unreachable - double-click handling");
-      return;
-    }
-    // NOTE: allow highlighting inside brackets as WORD, STRING, COMMENT, etc
-    enum TOKEN_TYPE token_type = textures[idx]->token->t;
-    while (0 <= idx_local && idx_local < textures_count) {
-      if (textures[idx_local]->token->vlen == 1 &&
-          *textures[idx_local]->token->v == end_c &&
-          textures[idx_local]->token->t == token_type && open_count == 1) {
-        break;
-      }
-      if (textures[idx_local]->token->vlen == 1 &&
-          *textures[idx_local]->token->v == c &&
-          textures[idx_local]->token->t == token_type) {
-        open_count += 1;
-      }
-      if (textures[idx_local]->token->vlen == 1 &&
-          *textures[idx_local]->token->v == end_c &&
-          textures[idx_local]->token->t == token_type && open_count > 1) {
-        open_count -= 1;
-      }
-      idx_local += direction;
-    }
-
-    // NOTE: empty region, don't highlight
-    if (abs(idx_local - idx) < 2) {
-      return;
-    }
-  } else {
-    // didn't match any highlighting criteria
-    // highlight current token
-    // for that increment the idx and idx_local
-    // so that below incr/decr works properly
-    idx -= direction;
-    idx_local += direction;
+    idx_local = textures[idx]->token->s_until;
   }
-
-  // exclude selection bounds and only select insides
-  idx += direction;
-  idx_local -= direction;
 
   if (idx > idx_local) {
     int tmp = idx;
     idx = idx_local;
     idx_local = tmp;
+  }
+
+  // exclude selection bounds and only select insides
+  if (idx != idx_local && idx < textures_count - 1 && idx_local > 0) {
+    idx += 1;
+    idx_local -= 1;
   }
 
   state->highlight_stationary_texture_idx = idx;
