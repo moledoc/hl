@@ -32,8 +32,18 @@ date2 = Date.from_string('11-09-2012')
 is_date = Date.is_date_valid('11-09-2012')
 print(date2.to_string(), is_date)
 
+print("unclosed"
+
 print(f"{date2.to_string()}")
 print("{[(a)]} {(]") # NOTE: try double-click highlighting on brackets
 # # NOTE: try double-click highlighting on brackets {[(a)]} {(]
 # print("{[(a)]} {(]") # NOTE: try double-click highlighting on brackets
+
+# make sure brackets are not messed up after unclosed ones in commenst
+a = [1,2,3,4]
+a[0] = 2
+b = {"test": 1}
+b["test"] = 2
+print(f"{date2.to_string()} [something] (something)")
+
 # this shouldn't be colored to string color
