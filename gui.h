@@ -1089,7 +1089,9 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   SDL_DestroyRenderer(renderer);
   SDL_Quit();
 
-  SDL_DestroyTexture(state->clearing);
+  if (state->clearing != NULL) {
+    SDL_DestroyTexture(state->clearing);
+  }
   free_textures(text_textures, textures_count);
   free_tokens(tokens, tokens_count);
   free_contents(contents);
