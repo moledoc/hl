@@ -230,6 +230,12 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
 
     highlight_start_x = state->highlight_moving_coord->x;
     highlight_end_x = state->highlight_stationary_coord->x;
+
+    // NOTE: if highlighting region end is below start
+    // and cursor is of of window to left/right, move end index back 1 step
+  } else if (start_idx < end_idx && (highlight_end_x < HORIZONTAL_PADDING ||
+                                     highlight_end_x > state->window_width)) {
+    end_idx -= 1;
   }
 
   for (int i = start_idx; i <= end_idx; i += 1) {
