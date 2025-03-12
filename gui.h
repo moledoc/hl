@@ -167,7 +167,9 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
     // NOTE: only render what fits on window
     // continue if before window
     // break if after window
-    if (texture_start_height + textures[i]->h < 0) {
+    if (texture_start_height + textures[i]->h < 0 ||
+        texture_start_width > state->window_width ||
+        texture_start_width + textures[i]->w < 0) {
       continue;
     } else if (state->window_height <= texture_start_height) {
       // NOTE: mouse is out of window to the bottom
@@ -205,6 +207,9 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
 }
 
 // TODO: FIXME: when font is scaled, existing highlight might move or get gaps
+// NOTE: MAYBE: FIXME: when highlighting with mouse downwards and cursor is out
+// of window to left/right, then currently last highlighted line's first token
+// is also highlighted
 void handle_highlight(SDL_Renderer *renderer, Texture **textures,
                       int textures_count, State *state) {
   if (
@@ -230,12 +235,6 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
 
     highlight_start_x = state->highlight_moving_coord->x;
     highlight_end_x = state->highlight_stationary_coord->x;
-
-    // NOTE: if highlighting region end is below start
-    // and cursor is of of window to left/right, move end index back 1 step
-  } else if (start_idx < end_idx && (highlight_end_x < HORIZONTAL_PADDING ||
-                                     highlight_end_x > state->window_width)) {
-    end_idx -= 1;
   }
 
   for (int i = start_idx; i <= end_idx; i += 1) {
@@ -268,7 +267,7 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
     }
 
     SDL_Rect highlight_rect = {
-        state->horizontal_scroll + texture_start_width + highlight_start_offset,
+        texture_start_width + highlight_start_offset + state->horizontal_scroll,
         texture_start_height,
         textures[i]->w - (highlight_start_offset + hightlight_end_offset),
         textures[i]->h};
@@ -493,7 +492,9 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     // NOTE: only render what fits on window
     // continue if before window
     // break if after window
-    if (texture_start_height + textures[i]->h < 0) {
+    if (texture_start_height + textures[i]->h < 0 ||
+        texture_start_width > state->window_width ||
+        texture_start_width + textures[i]->w < 0) {
       continue;
     } else if (state->window_height <= texture_start_height) {
       break;
