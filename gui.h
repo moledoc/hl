@@ -24,8 +24,7 @@
 #define VERTICAL_SCROLLBAR_WIDTH (15)
 #define HORIZONTAL_SCROLLBAR_HEIGHT 15
 
-int HORIZONTAL_PADDING = (VERTICAL_SCROLLBAR_WIDTH + 5);
-
+#define HORIZONTAL_PADDING_BASE (VERTICAL_SCROLLBAR_WIDTH + 5)
 #define VERTICAL_PADDING (5)
 #define ROW_NUMBER_PADDING (10)
 
@@ -36,6 +35,7 @@ int HORIZONTAL_PADDING = (VERTICAL_SCROLLBAR_WIDTH + 5);
 
 int BASE_FONT_SIZE = DEFAULT_FONT_SIZE; // MAYBE: move to state
 int FONT_SIZE = DEFAULT_FONT_SIZE;      // MAYBE: move to state
+int HORIZONTAL_PADDING = (HORIZONTAL_PADDING_BASE);
 int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 
 // TODO: improve colors
@@ -101,6 +101,15 @@ typedef struct {
   int rows_count;
 } State;
 
+void scale_texture_font(Texture **textures, int textures_count, State *state) {
+  for (int i = 0; i < textures_count; i += 1) {
+    textures[i]->x = rint((float)textures[i]->x * state->font_scale_factor);
+    textures[i]->y = rint((float)textures[i]->y * state->font_scale_factor);
+    textures[i]->w = rint((float)textures[i]->w * state->font_scale_factor);
+    textures[i]->h = rint((float)textures[i]->h * state->font_scale_factor);
+  }
+}
+
 void scale_font(Texture **textures, int textures_count, State *state) {
 
   state->max_horizontal_offset =
@@ -123,11 +132,16 @@ void scale_font(Texture **textures, int textures_count, State *state) {
   state->highlight_moving_coord->y =
       rint((float)state->highlight_moving_coord->y * state->font_scale_factor);
 
+  scale_texture_font(textures, textures_count, state);
+}
+
+void reset_scale_texture_font(Texture **textures, int textures_count,
+                              State *state) {
   for (int i = 0; i < textures_count; i += 1) {
-    textures[i]->x = rint((float)textures[i]->x * state->font_scale_factor);
-    textures[i]->y = rint((float)textures[i]->y * state->font_scale_factor);
-    textures[i]->w = rint((float)textures[i]->w * state->font_scale_factor);
-    textures[i]->h = rint((float)textures[i]->h * state->font_scale_factor);
+    textures[i]->x = rint((float)textures[i]->x / state->font_scale_factor);
+    textures[i]->y = rint((float)textures[i]->y / state->font_scale_factor);
+    textures[i]->w = rint((float)textures[i]->w / state->font_scale_factor);
+    textures[i]->h = rint((float)textures[i]->h / state->font_scale_factor);
   }
 }
 
@@ -158,12 +172,7 @@ void reset_font_scale(Texture **textures, int textures_count, State *state) {
   state->highlight_moving_coord->y =
       rint((float)state->highlight_moving_coord->y / state->font_scale_factor);
 
-  for (int i = 0; i < textures_count; i += 1) {
-    textures[i]->x = rint((float)textures[i]->x / state->font_scale_factor);
-    textures[i]->y = rint((float)textures[i]->y / state->font_scale_factor);
-    textures[i]->w = rint((float)textures[i]->w / state->font_scale_factor);
-    textures[i]->h = rint((float)textures[i]->h / state->font_scale_factor);
-  }
+  reset_scale_texture_font(textures, textures_count, state);
 }
 
 int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
@@ -614,7 +623,7 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
   row_nrs_to_textures(renderer, font, font_size, row, state);
   if (row - 1 >= 0) {
     ROW_NUMBER_WIDTH = state->row_nr_textures[row - 1]->w + ROW_NUMBER_PADDING;
-    HORIZONTAL_PADDING += ROW_NUMBER_WIDTH;
+    HORIZONTAL_PADDING = HORIZONTAL_PADDING_BASE + ROW_NUMBER_WIDTH;
   }
 
   return textures;
@@ -862,6 +871,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.wheel.y != 0) {
 
       reset_font_scale(text_textures, textures_count, state);
+      reset_scale_texture_font(state->row_nr_textures, state->rows_count,
+                               state);
 
       FONT_SIZE += FONT_INCREMENT * sign(sdl_event.wheel.y);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
@@ -871,6 +882,14 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
       state->font_size_unchanged_since = SDL_GetTicks64();
       scale_font(text_textures, textures_count, state);
+
+      scale_texture_font(state->row_nr_textures, state->rows_count, state);
+      if (state->rows_count - 1 >= 0) {
+        ROW_NUMBER_WIDTH = state->row_nr_textures[state->rows_count - 1]->w +
+                           ROW_NUMBER_PADDING;
+        HORIZONTAL_PADDING = HORIZONTAL_PADDING_BASE + ROW_NUMBER_WIDTH;
+      }
+
       // FONT RESIZE WITH MOUSEWHEEL END
 
       // FONT RESIZE +/- START
@@ -881,6 +900,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                 sdl_event.key.keysym.sym == SDLK_MINUS)) {
 
       reset_font_scale(text_textures, textures_count, state);
+      reset_scale_texture_font(state->row_nr_textures, state->rows_count,
+                               state);
 
       FONT_SIZE += FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
                    FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_MINUS);
@@ -891,6 +912,13 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
       state->font_size_unchanged_since = SDL_GetTicks64();
       scale_font(text_textures, textures_count, state);
+
+      scale_texture_font(state->row_nr_textures, state->rows_count, state);
+      if (state->rows_count - 1 >= 0) {
+        ROW_NUMBER_WIDTH = state->row_nr_textures[state->rows_count - 1]->w +
+                           ROW_NUMBER_PADDING;
+        HORIZONTAL_PADDING = HORIZONTAL_PADDING_BASE + ROW_NUMBER_WIDTH;
+      }
       // FONT RESIZE +/- END
 
       // FONT RESIZE TO DEFAULT START
@@ -904,7 +932,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
               ? (float)DEFAULT_FONT_SIZE / (float)FONT_SIZE
               : 1.0f;
       // NOTE: only update FONT_SIZE so we don't pass the condition
-      // FONT_SIZE==BASE_FONT_SIZE below
+      // FONT_SIZE == BASE_FONT_SIZE below
       FONT_SIZE = DEFAULT_FONT_SIZE;
       TTF_SetFontSize(font, DEFAULT_FONT_SIZE);
       state->is_font_resized = true;
@@ -1053,7 +1081,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       state->is_font_resized = false;
 
       // NOTE: only recalc textures if font is different from base font
-      if (BASE_FONT_SIZE != FONT_SIZE) {
+      // or if FONT_SIZE is the default font size
+      if (BASE_FONT_SIZE != FONT_SIZE || FONT_SIZE == DEFAULT_FONT_SIZE) {
         BASE_FONT_SIZE = FONT_SIZE;
         state->font_scale_factor = 1.0f;
         // MAYBE: TODO: make update_textures parallel safe
