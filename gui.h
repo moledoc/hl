@@ -282,11 +282,8 @@ void handle_double_click(Texture **textures, int textures_count, int idx,
   if (idx < 0) {
     return;
   }
-  int idx_local = idx;
-  if (textures[idx]->token->s != SCOPE_NONE) {
 
-    idx_local = textures[idx]->token->s_until;
-  }
+  int idx_local = textures[idx]->token->s_until;
 
   if (idx > idx_local) {
     int tmp = idx;
