@@ -1,5 +1,6 @@
 # hl
 
+**This project is WIP and used for exploration**
 
 Text displaying tool (to enhance acme workflow) - might become something else in the future.
 

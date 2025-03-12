@@ -667,9 +667,9 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     // NOTE: only render what fits on window
     // continue if before window
     // break if after window
-    if (texture_start_height + textures[i]->h < 0 ||
+    if (texture_start_height + textures[i]->h < VERTICAL_PADDING ||
         texture_start_width > state->window_width ||
-        texture_start_width + textures[i]->w < 0) {
+        texture_start_width + textures[i]->w < HORIZONTAL_PADDING) {
       continue;
     } else if (state->window_height <= texture_start_height) {
       break;
@@ -686,9 +686,6 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   }
 
   // NOTE: we clear the area where we need to draw scrollbar and row numbers
-  // We're doing a bit of extra work by drawing the tokens and then clearing
-  // them, but for now it's simpler.
-  // TODO: vertical scroll in a way it doesn't require clearing
   if (state->clearing != NULL) {
     SDL_Color prev = {0};
     SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
@@ -698,6 +695,7 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     SDL_RenderFillRect(renderer, &clearing_rect);
     SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
   }
+
   handle_scrollbars(renderer, state);
 
   for (int i = 0; i < state->rows_count; i += 1) {
@@ -963,7 +961,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     SDL_Quit();
     return EXIT_FAILURE;
   }
-  SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+  SDL_SetRenderDrawColor(renderer, WHITE.r, WHITE.g, WHITE.b, WHITE.a);
 
   int contents_len = 0;
   char *contents = read_contents(filename, &contents_len);
