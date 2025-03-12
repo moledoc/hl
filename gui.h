@@ -33,6 +33,8 @@
 #define MILLISECOND 1
 #define SECOND (1000 * MILLISECOND)
 
+#define FONT_RENDERING_DELAY 2
+
 int BASE_FONT_SIZE = DEFAULT_FONT_SIZE; // MAYBE: move to state
 int FONT_SIZE = DEFAULT_FONT_SIZE;      // MAYBE: move to state
 int HORIZONTAL_PADDING = (HORIZONTAL_PADDING_BASE);
@@ -927,16 +929,16 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_EQUALS) {
 
-      state->font_scale_factor =
-          BASE_FONT_SIZE != DEFAULT_FONT_SIZE
-              ? (float)DEFAULT_FONT_SIZE / (float)FONT_SIZE
-              : 1.0f;
-      // NOTE: only update FONT_SIZE so we don't pass the condition
-      // FONT_SIZE == BASE_FONT_SIZE below
-      FONT_SIZE = DEFAULT_FONT_SIZE;
-      TTF_SetFontSize(font, DEFAULT_FONT_SIZE);
-      state->is_font_resized = true;
-      state->font_size_unchanged_since = SDL_GetTicks64();
+      if (FONT_SIZE != DEFAULT_FONT_SIZE) {
+        FONT_SIZE = DEFAULT_FONT_SIZE;
+        TTF_SetFontSize(font, DEFAULT_FONT_SIZE);
+        state->is_font_resized = true;
+        // NOTE: + FONT_RENDERING_DELAY because we want to render right away
+        state->font_size_unchanged_since =
+            SDL_GetTicks64() + FONT_RENDERING_DELAY * SECOND;
+        // NOTE: factor to 0 to pass the condition
+        state->font_scale_factor = 0;
+      }
       // FONT RESIZE TO DEFAULT END
 
       // WINDOW RESIZE START
@@ -1075,14 +1077,12 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       // recalculate the textures for better quality text
       // NOTE: if we go back to default font size, update textures right away
     } else if (state->is_font_resized &&
-               (1 * SECOND <
-                    SDL_GetTicks64() - state->font_size_unchanged_since ||
-                FONT_SIZE == DEFAULT_FONT_SIZE)) {
+               (FONT_RENDERING_DELAY * SECOND <
+                SDL_GetTicks64() - state->font_size_unchanged_since)) {
       state->is_font_resized = false;
 
-      // NOTE: only recalc textures if font is different from base font
-      // or if FONT_SIZE is the default font size
-      if (BASE_FONT_SIZE != FONT_SIZE || FONT_SIZE == DEFAULT_FONT_SIZE) {
+      // NOTE: only recalc textures if font is scaled
+      if (state->font_scale_factor != 1.0f) {
         BASE_FONT_SIZE = FONT_SIZE;
         state->font_scale_factor = 1.0f;
         // MAYBE: TODO: make update_textures parallel safe
