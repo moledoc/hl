@@ -210,6 +210,10 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
 // NOTE: MAYBE: FIXME: when highlighting with mouse downwards and cursor is out
 // of window to left/right, then currently last highlighted line's first token
 // is also highlighted
+// NOTE: code shared with handle_copy_to_clipboard,
+// but too early to abstract anything.
+// Just a note that any changes here might also be needed to be done in
+// handle_copy_to_clipboard.
 void handle_highlight(SDL_Renderer *renderer, Texture **textures,
                       int textures_count, State *state) {
   if (
@@ -363,6 +367,86 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
   }
 
   SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+}
+
+// NOTE: code shared with handle_highlight, but too early to abstract anything.
+// Just a note that any changes here might also be needed to be done in
+// handle_highlight.
+// NOTE: there is small delay when pasting after copying from application,
+// might need to investigate in the future
+void handle_copy_to_clipboard(Texture **textures, int textures_count,
+                              State *state) {
+  if (
+      // stationary token index was neg
+      state->highlight_stationary_texture_idx < 0 ||
+      // mouse click, no moving
+      state->highlight_stationary_coord->x ==
+              state->highlight_moving_coord->x &&
+          state->highlight_stationary_coord->y ==
+              state->highlight_moving_coord->y) {
+    return;
+  }
+
+  int start_idx = state->highlight_stationary_texture_idx;
+  int end_idx = state->highlight_moving_texture_idx;
+
+  int highlight_start_x = state->highlight_stationary_coord->x;
+  int highlight_end_x = state->highlight_moving_coord->x;
+
+  if (end_idx < start_idx) {
+    start_idx = state->highlight_moving_texture_idx;
+    end_idx = state->highlight_stationary_texture_idx;
+
+    highlight_start_x = state->highlight_moving_coord->x;
+    highlight_end_x = state->highlight_stationary_coord->x;
+  }
+
+  int copy_text_len = 0;
+  for (int i = start_idx; i <= end_idx; i += 1) {
+    copy_text_len += textures[i]->token->vlen;
+  }
+
+  char *copy_to_clipboard = calloc(copy_text_len + 1, sizeof(char));
+
+  int offset = 0;
+  for (int i = start_idx; i <= end_idx; i += 1) {
+
+    int texture_start_width =
+        HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
+    int texture_start_height =
+        VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
+
+    int texture_char_size = textures[i]->w / textures[i]->token->vlen;
+    int highlight_start_offset = 0;
+    int hightlight_end_offset = 0;
+
+    int start_diff = highlight_start_x - texture_start_width;
+    if (i == start_idx && start_diff > 0 &&
+        // only trim highlight start if mouse is inside the token
+        texture_start_width <= highlight_start_x &&
+        highlight_start_x <= texture_start_width + textures[i]->w) {
+      highlight_start_offset =
+          clamp(start_diff - start_diff % texture_char_size, 0, textures[i]->w);
+    }
+    int end_diff = texture_start_width + textures[i]->w - highlight_end_x;
+    if (i == end_idx && end_diff > 0 &&
+        // only trim highlight end if mouse is inside the token
+        texture_start_width <= highlight_end_x &&
+        highlight_start_x <= texture_start_width + textures[i]->w) {
+      hightlight_end_offset =
+          clamp(end_diff - end_diff % texture_char_size, 0, textures[i]->w);
+    }
+
+    int start_char_offset = highlight_start_offset / texture_char_size;
+    int end_char_offset = hightlight_end_offset / texture_char_size;
+
+    memcpy(copy_to_clipboard + offset,
+           textures[i]->token->v + start_char_offset,
+           textures[i]->token->vlen - end_char_offset);
+    offset += textures[i]->token->vlen - start_char_offset - end_char_offset;
+  }
+  SDL_SetClipboardText((const char *)copy_to_clipboard);
+  free(copy_to_clipboard);
 }
 
 // allocs memory
@@ -609,6 +693,19 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.button.state == SDL_RELEASED) {
       state->left_mouse_button_pressed = false;
       // MOUSE END
+
+      // COPY HIGHLIGHTED TEXT START
+    } else if (state->ctrl_pressed && !state->shift_pressed &&
+               sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_c) {
+      if (state->highlight_moving_coord->x !=
+              state->highlight_stationary_coord->x &&
+          state->highlight_moving_coord->y !=
+              state->highlight_stationary_coord->y) {
+        handle_copy_to_clipboard(text_textures, textures_count, state);
+      }
+      // COPY HIGHLIGHTED TEXT END
 
       // SCROLL VERTICAL START
     } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&

@@ -55,7 +55,7 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- [x] acme-inspired highlighting (inside quotes, parenthesis, brackets etc)
 		- [x] double-click to highlight a word
 		- [ ] triple-click or double click beginning/end of line to highlight a line
-	- [ ] copy-paste highlighted text
+	- [x] copy-paste highlighted text
 	- [ ] soft-wrap text
 	- [ ] row and col numbers
 		- MAYBE: `jump to <path>:<line>:<col>` support
