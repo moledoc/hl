@@ -1121,6 +1121,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   if (state->clearing != NULL) {
     SDL_DestroyTexture(state->clearing);
   }
+  free_textures(state->row_nr_textures, state->rows_count);
   free_textures(text_textures, textures_count);
   free_tokens(tokens, tokens_count);
   free_contents(contents);
