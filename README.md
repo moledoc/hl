@@ -1,5 +1,6 @@
 # hl
 
+**This project is WIP and used for exploration**
 
 Text displaying tool (to enhance acme workflow) - might become something else in the future.
 
@@ -57,7 +58,7 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- [ ] triple-click or double click beginning/end of line to highlight a line
 	- [x] copy-paste highlighted text
 	- [ ] soft-wrap text
-	- [ ] row and col numbers
+	- [x] row and col numbers
 		- MAYBE: `jump to <path>:<line>:<col>` support
 	- [ ] text search
 	- [ ] UTF handling

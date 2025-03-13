@@ -21,21 +21,27 @@
 #define FONT_LOWER_BOUND 12
 #define FONT_UPPER_BOUND 64
 
-#define VERTICAL_SCROLLBAR_WIDTH 15
+#define VERTICAL_SCROLLBAR_WIDTH (15)
 #define HORIZONTAL_SCROLLBAR_HEIGHT 15
 
-#define HORIZONTAL_PADDING (VERTICAL_SCROLLBAR_WIDTH + 5)
+#define HORIZONTAL_PADDING_BASE (VERTICAL_SCROLLBAR_WIDTH + 5)
 #define VERTICAL_PADDING (5)
+#define ROW_NUMBER_PADDING (10)
 
 #define FRAME_DELAY 16 // in milliseconds; ~60FPS
 
 #define MILLISECOND 1
 #define SECOND (1000 * MILLISECOND)
 
+#define FONT_RENDERING_DELAY 2
+
 int BASE_FONT_SIZE = DEFAULT_FONT_SIZE; // MAYBE: move to state
 int FONT_SIZE = DEFAULT_FONT_SIZE;      // MAYBE: move to state
+int HORIZONTAL_PADDING = (HORIZONTAL_PADDING_BASE);
+int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 
 // TODO: improve colors
+const SDL_Color WHITE = {255, 255, 255, 255};
 const SDL_Color BLACK = {0, 0, 0, 255};
 const SDL_Color RED = {255, 0, 0, 255};
 const SDL_Color GREEN = {0, 255, 0, 255};
@@ -54,6 +60,8 @@ typedef struct {
   int y;
   int w;
   int h;
+  int r;
+  int c;
 } Texture;
 
 typedef struct {
@@ -64,6 +72,8 @@ typedef struct {
 typedef struct {
   int window_width;
   int window_height;
+  //
+  SDL_Texture *clearing;
   //
   bool keep_window_open;
   bool file_modified;
@@ -88,7 +98,19 @@ typedef struct {
   Coord *highlight_moving_coord;
   //
   Uint64 last_mouse_click_tick;
+  //
+  Texture **row_nr_textures;
+  int rows_count;
 } State;
+
+void scale_texture_font(Texture **textures, int textures_count, State *state) {
+  for (int i = 0; i < textures_count; i += 1) {
+    textures[i]->x = rint((float)textures[i]->x * state->font_scale_factor);
+    textures[i]->y = rint((float)textures[i]->y * state->font_scale_factor);
+    textures[i]->w = rint((float)textures[i]->w * state->font_scale_factor);
+    textures[i]->h = rint((float)textures[i]->h * state->font_scale_factor);
+  }
+}
 
 void scale_font(Texture **textures, int textures_count, State *state) {
 
@@ -112,11 +134,16 @@ void scale_font(Texture **textures, int textures_count, State *state) {
   state->highlight_moving_coord->y =
       rint((float)state->highlight_moving_coord->y * state->font_scale_factor);
 
+  scale_texture_font(textures, textures_count, state);
+}
+
+void reset_scale_texture_font(Texture **textures, int textures_count,
+                              State *state) {
   for (int i = 0; i < textures_count; i += 1) {
-    textures[i]->x = rint((float)textures[i]->x * state->font_scale_factor);
-    textures[i]->y = rint((float)textures[i]->y * state->font_scale_factor);
-    textures[i]->w = rint((float)textures[i]->w * state->font_scale_factor);
-    textures[i]->h = rint((float)textures[i]->h * state->font_scale_factor);
+    textures[i]->x = rint((float)textures[i]->x / state->font_scale_factor);
+    textures[i]->y = rint((float)textures[i]->y / state->font_scale_factor);
+    textures[i]->w = rint((float)textures[i]->w / state->font_scale_factor);
+    textures[i]->h = rint((float)textures[i]->h / state->font_scale_factor);
   }
 }
 
@@ -147,12 +174,7 @@ void reset_font_scale(Texture **textures, int textures_count, State *state) {
   state->highlight_moving_coord->y =
       rint((float)state->highlight_moving_coord->y / state->font_scale_factor);
 
-  for (int i = 0; i < textures_count; i += 1) {
-    textures[i]->x = rint((float)textures[i]->x / state->font_scale_factor);
-    textures[i]->y = rint((float)textures[i]->y / state->font_scale_factor);
-    textures[i]->w = rint((float)textures[i]->w / state->font_scale_factor);
-    textures[i]->h = rint((float)textures[i]->h / state->font_scale_factor);
-  }
+  reset_scale_texture_font(textures, textures_count, state);
 }
 
 int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
@@ -323,8 +345,8 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
                          (Uint8 *)&prev.b, (Uint8 *)&prev.a);
 
   // vertical scrollbar background
-  SDL_Rect vertical_scrollbar_bg_rect = {0, 0, VERTICAL_SCROLLBAR_WIDTH,
-                                         state->window_height};
+  SDL_Rect vertical_scrollbar_bg_rect = {
+      ROW_NUMBER_WIDTH, 0, VERTICAL_SCROLLBAR_WIDTH, state->window_height};
   SDL_SetRenderDrawColor(renderer, SCROLLBAR_BG.r, SCROLLBAR_BG.g,
                          SCROLLBAR_BG.b, SCROLLBAR_BG.a);
   SDL_RenderFillRect(renderer, &vertical_scrollbar_bg_rect);
@@ -332,7 +354,7 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
   // vertical scrollbar foreground
   int height_hundred_percent = state->window_height;
   SDL_Rect vertical_scrollbar_fg_rect = {
-      0,
+      ROW_NUMBER_WIDTH,
       height_hundred_percent * (-state->vertical_scroll) /
           state->max_vertical_offset,
       VERTICAL_SCROLLBAR_WIDTH,
@@ -345,7 +367,7 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
   // horizontal scrollbar background
   if (state->horizontal_scroll != 0) {
     SDL_Rect horizontal_scrollbar_bg_rect = {
-        VERTICAL_SCROLLBAR_WIDTH,
+        HORIZONTAL_PADDING - ROW_NUMBER_PADDING,
         state->window_height - HORIZONTAL_SCROLLBAR_HEIGHT, state->window_width,
         HORIZONTAL_SCROLLBAR_HEIGHT};
     SDL_SetRenderDrawColor(renderer, SCROLLBAR_BG.r, SCROLLBAR_BG.g,
@@ -450,6 +472,63 @@ void handle_copy_to_clipboard(Texture **textures, int textures_count,
 }
 
 // allocs memory
+void row_nrs_to_textures(SDL_Renderer *renderer, TTF_Font *font, int font_size,
+                         int rows, State *state) {
+  Texture **textures = calloc(rows, sizeof(Texture *));
+
+  SDL_Color color = MAGENTA;
+
+  int local_vertical_offset = 0;
+
+  char buf[10] = {0};
+
+  for (int i = 0; i < rows; i += 1) {
+
+    snprintf(buf, sizeof(buf), "%d", i + 1);
+    SDL_Surface *row_nr_surface = TTF_RenderUTF8_Solid(font, buf, color);
+    if (row_nr_surface == NULL) {
+      fprintf(stderr, "failed to create row nr surface: %s\n", TTF_GetError());
+      return;
+    }
+    memset(buf, '\0', sizeof(buf));
+
+    SDL_Texture *row_nr_texture =
+        SDL_CreateTextureFromSurface(renderer, row_nr_surface);
+
+    if (row_nr_texture == NULL) {
+      fprintf(stderr, "failed to create row nr texture: %s\n", SDL_GetError());
+      return;
+    }
+
+    /*
+      worst to best scaled font
+      SDL_ScaleModeNearest < nearest pixel sampling>
+      SDL_ScaleModeLinear < linear filtering>
+      SDL_ScaleModeBest < anisotropic filtering>
+    */
+    SDL_SetTextureScaleMode(row_nr_texture, SDL_ScaleModeBest);
+
+    Texture *tp = calloc(1, sizeof(Texture));
+    tp->texture = row_nr_texture;
+    tp->token = NULL;
+    tp->x = 0;
+    tp->y = local_vertical_offset;
+    tp->w = row_nr_surface->w;
+    tp->h = row_nr_surface->h;
+    tp->r = i + 1;
+    tp->c = 0;
+
+    local_vertical_offset += row_nr_surface->h;
+    textures[i] = tp;
+
+    SDL_FreeSurface(row_nr_surface);
+  }
+
+  state->row_nr_textures = textures;
+  state->rows_count = rows;
+}
+
+// allocs memory
 Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
                              int font_size, Token **tokens, int tokens_count,
                              int *textures_count, State *state) {
@@ -459,6 +538,9 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
   int local_vertical_offset = 0;
 
   int max_horizontal_offset = 0;
+
+  int row = 0;
+  int col = 0;
 
   SDL_Color text_color = BLACK;
 
@@ -508,6 +590,8 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     tp->y = local_vertical_offset;
     tp->w = text_surface->w;
     tp->h = text_surface->h;
+    tp->r = row;
+    tp->c = col;
 
     textures[*textures_count] = tp;
     *textures_count += 1;
@@ -522,8 +606,11 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
                tp->w; // FIXME: HACK: vertical scrolling fix
       local_horizontal_offset = 0;
       local_vertical_offset += text_surface->h;
+      col = 0;
+      row += 1;
     } else {
       local_horizontal_offset += text_surface->w;
+      col += tokens[i]->vlen;
     }
   }
 
@@ -533,6 +620,12 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
   // NOTE: snap back if text fits on screen, but horizontal scroll is non-zero
   if (max_horizontal_offset < state->window_width) {
     state->horizontal_scroll = 0;
+  }
+
+  row_nrs_to_textures(renderer, font, font_size, row, state);
+  if (row - 1 >= 0) {
+    ROW_NUMBER_WIDTH = state->row_nr_textures[row - 1]->w + ROW_NUMBER_PADDING;
+    HORIZONTAL_PADDING = HORIZONTAL_PADDING_BASE + ROW_NUMBER_WIDTH;
   }
 
   return textures;
@@ -548,6 +641,15 @@ void free_textures(Texture **textures, int textures_count) {
   }
 }
 
+void update_clearing_texture(SDL_Renderer *renderer, State *state) {
+  if (state->clearing != NULL) {
+    SDL_DestroyTexture(state->clearing);
+  }
+  state->clearing = SDL_CreateTexture(renderer, 0, 0, state->window_width,
+                                      state->window_height);
+  SDL_SetTextureColorMod(state->clearing, WHITE.r, WHITE.g, WHITE.b);
+}
+
 // update_textures frees existing textures
 // and creates new textures from tokens
 // frees and allocs memory
@@ -555,6 +657,7 @@ Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
                           TTF_Font *font, int font_size, Token **tokens,
                           int tokens_count, int *textures_count, State *state) {
   free_textures(textures, *textures_count);
+  free_textures(state->row_nr_textures, state->rows_count);
   *textures_count = 0;
   return tokens_to_textures(renderer, font, FONT_SIZE, tokens, tokens_count,
                             textures_count, state);
@@ -564,7 +667,6 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
                     int textures_count, State *state) {
 
   handle_highlight(renderer, textures, textures_count, state);
-  handle_scrollbars(renderer, state);
 
   for (int i = 0; i < textures_count; i += 1) {
 
@@ -576,9 +678,9 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     // NOTE: only render what fits on window
     // continue if before window
     // break if after window
-    if (texture_start_height + textures[i]->h < 0 ||
+    if (texture_start_height + textures[i]->h < VERTICAL_PADDING ||
         texture_start_width > state->window_width ||
-        texture_start_width + textures[i]->w < 0) {
+        texture_start_width + textures[i]->w < HORIZONTAL_PADDING) {
       continue;
     } else if (state->window_height <= texture_start_height) {
       break;
@@ -592,6 +694,44 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     SDL_Rect text_rect = {texture_start_width, texture_start_height,
                           textures[i]->w, textures[i]->h};
     SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
+  }
+
+  // NOTE: we clear the area where we need to draw scrollbar and row numbers
+  if (state->clearing != NULL) {
+    SDL_Color prev = {0};
+    SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                           (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+    SDL_SetRenderDrawColor(renderer, WHITE.r, WHITE.g, WHITE.b, WHITE.a);
+    SDL_Rect clearing_rect = {0, 0, HORIZONTAL_PADDING, state->window_height};
+    SDL_RenderFillRect(renderer, &clearing_rect);
+    SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+  }
+
+  handle_scrollbars(renderer, state);
+
+  for (int i = 0; i < state->rows_count; i += 1) {
+
+    int texture_start_width = state->row_nr_textures[i]->x + ROW_NUMBER_WIDTH -
+                              ROW_NUMBER_PADDING / 2 -
+                              state->row_nr_textures[i]->w;
+
+    int texture_start_height = VERTICAL_PADDING + state->row_nr_textures[i]->y +
+                               state->vertical_scroll;
+
+    // NOTE: only render what fits on window
+    // continue if before window
+    // break if after window
+    if (texture_start_height + state->row_nr_textures[i]->h < 0) {
+      continue;
+    } else if (state->window_height <= texture_start_height) {
+      break;
+    }
+
+    SDL_Rect row_nr_rect = {texture_start_width, texture_start_height,
+                            state->row_nr_textures[i]->w,
+                            state->row_nr_textures[i]->h};
+    SDL_RenderCopy(renderer, state->row_nr_textures[i]->texture, NULL,
+                   &row_nr_rect);
   }
 
   return EXIT_SUCCESS;
@@ -733,6 +873,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.wheel.y != 0) {
 
       reset_font_scale(text_textures, textures_count, state);
+      reset_scale_texture_font(state->row_nr_textures, state->rows_count,
+                               state);
 
       FONT_SIZE += FONT_INCREMENT * sign(sdl_event.wheel.y);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
@@ -742,6 +884,14 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
       state->font_size_unchanged_since = SDL_GetTicks64();
       scale_font(text_textures, textures_count, state);
+
+      scale_texture_font(state->row_nr_textures, state->rows_count, state);
+      if (state->rows_count - 1 >= 0) {
+        ROW_NUMBER_WIDTH = state->row_nr_textures[state->rows_count - 1]->w +
+                           ROW_NUMBER_PADDING;
+        HORIZONTAL_PADDING = HORIZONTAL_PADDING_BASE + ROW_NUMBER_WIDTH;
+      }
+
       // FONT RESIZE WITH MOUSEWHEEL END
 
       // FONT RESIZE +/- START
@@ -752,6 +902,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                 sdl_event.key.keysym.sym == SDLK_MINUS)) {
 
       reset_font_scale(text_textures, textures_count, state);
+      reset_scale_texture_font(state->row_nr_textures, state->rows_count,
+                               state);
 
       FONT_SIZE += FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
                    FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_MINUS);
@@ -762,6 +914,13 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
       state->font_size_unchanged_since = SDL_GetTicks64();
       scale_font(text_textures, textures_count, state);
+
+      scale_texture_font(state->row_nr_textures, state->rows_count, state);
+      if (state->rows_count - 1 >= 0) {
+        ROW_NUMBER_WIDTH = state->row_nr_textures[state->rows_count - 1]->w +
+                           ROW_NUMBER_PADDING;
+        HORIZONTAL_PADDING = HORIZONTAL_PADDING_BASE + ROW_NUMBER_WIDTH;
+      }
       // FONT RESIZE +/- END
 
       // FONT RESIZE TO DEFAULT START
@@ -770,16 +929,16 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_EQUALS) {
 
-      state->font_scale_factor =
-          BASE_FONT_SIZE != DEFAULT_FONT_SIZE
-              ? (float)DEFAULT_FONT_SIZE / (float)FONT_SIZE
-              : 1.0f;
-      // NOTE: only update FONT_SIZE so we don't pass the condition
-      // FONT_SIZE==BASE_FONT_SIZE below
-      FONT_SIZE = DEFAULT_FONT_SIZE;
-      TTF_SetFontSize(font, DEFAULT_FONT_SIZE);
-      state->is_font_resized = true;
-      state->font_size_unchanged_since = SDL_GetTicks64();
+      if (FONT_SIZE != DEFAULT_FONT_SIZE) {
+        FONT_SIZE = DEFAULT_FONT_SIZE;
+        TTF_SetFontSize(font, DEFAULT_FONT_SIZE);
+        state->is_font_resized = true;
+        // NOTE: + FONT_RENDERING_DELAY because we want to render right away
+        state->font_size_unchanged_since =
+            SDL_GetTicks64() + FONT_RENDERING_DELAY * SECOND;
+        // NOTE: factor to 0 to pass the condition
+        state->font_scale_factor = 0;
+      }
       // FONT RESIZE TO DEFAULT END
 
       // WINDOW RESIZE START
@@ -787,6 +946,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.window.event == SDL_WINDOWEVENT_RESIZED) {
       (void)SDL_GetWindowSize(window, &state->window_width,
                               &state->window_height);
+      update_clearing_texture(renderer, state);
       // WINDOW RESIZE END
     }
 
@@ -831,7 +991,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     SDL_Quit();
     return EXIT_FAILURE;
   }
-  SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+  SDL_SetRenderDrawColor(renderer, WHITE.r, WHITE.g, WHITE.b, WHITE.a);
 
   int contents_len = 0;
   char *contents = read_contents(filename, &contents_len);
@@ -856,6 +1016,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   (void)SDL_GetWindowSize(window, &state->window_width, &state->window_height);
   state->font_scale_factor = 1.0f;
   state->font_size_unchanged_since = SDL_GetTicks64();
+  update_clearing_texture(renderer, state);
 
   int textures_count = 0;
   Texture **text_textures = tokens_to_textures(
@@ -916,13 +1077,12 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       // recalculate the textures for better quality text
       // NOTE: if we go back to default font size, update textures right away
     } else if (state->is_font_resized &&
-               (1 * SECOND <
-                    SDL_GetTicks64() - state->font_size_unchanged_since ||
-                FONT_SIZE == DEFAULT_FONT_SIZE)) {
+               (FONT_RENDERING_DELAY * SECOND <
+                SDL_GetTicks64() - state->font_size_unchanged_since)) {
       state->is_font_resized = false;
 
-      // NOTE: only recalc textures if font is different from base font
-      if (BASE_FONT_SIZE != FONT_SIZE) {
+      // NOTE: only recalc textures if font is scaled
+      if (state->font_scale_factor != 1.0f) {
         BASE_FONT_SIZE = FONT_SIZE;
         state->font_scale_factor = 1.0f;
         // MAYBE: TODO: make update_textures parallel safe
@@ -958,6 +1118,10 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   SDL_DestroyRenderer(renderer);
   SDL_Quit();
 
+  if (state->clearing != NULL) {
+    SDL_DestroyTexture(state->clearing);
+  }
+  free_textures(state->row_nr_textures, state->rows_count);
   free_textures(text_textures, textures_count);
   free_tokens(tokens, tokens_count);
   free_contents(contents);
