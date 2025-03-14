@@ -82,6 +82,7 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- MAYBE: compute values/obj only once, that don't need to be recomputed
 		- [x] render only rows fitting on window
 		- [x] render only columns fitting on window
+- [ ] fix mem-leaks
 - [ ] building
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
