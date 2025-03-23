@@ -61,6 +61,11 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [x] row and col numbers
 		- MAYBE: `jump to <path>:<line>:<col>` support
 	- [ ] text search
+	- [ ] display cursor
+	- [ ] vendor SDL2 and SDL2_ttf to simplify dependencies
+	- [ ] move tokens and textures to state
+	- [ ] use linked lists for holding tokens/textures instead of array
+		- rationale: my hope is that this would enable reasonable enough text editing for this project
 	- [ ] UTF handling
 	- [ ] able to specify font
 		- [ ] cmd args 
@@ -73,7 +78,6 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [ ] some vim-inspired keyboard shortcuts for navigation
 		- TBD
 	- [ ] MAYBE: MAYBE: lsp integration
-	- [ ] MAYBE: vendor SDL2 and SDL2_ttf to simplify dependencies
 	- [ ] MAYBE: possible performance optimization
 		- [x] when font changes scale by factor first, and when the font persists for some time, calculate the textures again.
 		- MAYBE: instead of list (of textures/tokens):
