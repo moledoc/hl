@@ -65,6 +65,7 @@ typedef struct {
   //
   bool keep_window_open;
   bool file_modified;
+  bool color_scheme_modified;
   //
   bool is_font_resized;
   float font_scale_factor;
@@ -944,6 +945,25 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                               &state->window_height);
       update_clearing_texture(renderer, state);
       // WINDOW RESIZE END
+
+      // NEXT COLORSCHEME START
+    } else if (state->ctrl_pressed && state->shift_pressed &&
+               sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               (sdl_event.key.keysym.sym == SDLK_COMMA ||
+                sdl_event.key.keysym.sym == SDLK_PERIOD)) {
+      color_scheme_idx += -1 * (sdl_event.key.keysym.sym == SDLK_COMMA) +
+                          (sdl_event.key.keysym.sym == SDLK_PERIOD);
+      if (color_scheme_idx == -1) {
+        color_scheme_idx = COLOR_SCHEME_COUNT - 1;
+      } else if (color_scheme_idx == COLOR_SCHEME_COUNT) {
+        color_scheme_idx = 0;
+      }
+      color_scheme = &color_schemes[color_scheme_idx];
+      SDL_SetRenderDrawColor(renderer, color_scheme->bg.r, color_scheme->bg.g,
+                             color_scheme->bg.b, color_scheme->bg.a);
+      state->color_scheme_modified = true;
+      // NEXT COLORSCHEME END
     }
 
     SDL_RenderClear(renderer);
@@ -1073,6 +1093,17 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
       // and the font hasn't changed in x seconds
       // recalculate the textures for better quality text
       // NOTE: if we go back to default font size, update textures right away
+    } else if (state->color_scheme_modified) {
+      state->color_scheme_modified = false;
+      text_textures =
+          update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
+                          tokens_count, &textures_count, state);
+
+      SDL_RenderClear(renderer);
+      err = cpy_to_renderer(renderer, text_textures, textures_count, state);
+      if (err != EXIT_SUCCESS) {
+        break;
+      }
     } else if (state->is_font_resized &&
                (FONT_RENDERING_DELAY * SECOND <
                 SDL_GetTicks64() - state->font_size_unchanged_since)) {
