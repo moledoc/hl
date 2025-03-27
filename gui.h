@@ -288,10 +288,10 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
     SDL_Color prev = {0};
     SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                            (Uint8 *)&prev.b, (Uint8 *)&prev.a);
-    SDL_SetRenderDrawColor(renderer, get_color_scheme()->mouse_highlight.r,
-                           get_color_scheme()->mouse_highlight.g,
-                           get_color_scheme()->mouse_highlight.b,
-                           get_color_scheme()->mouse_highlight.a);
+    SDL_SetRenderDrawColor(renderer, color_scheme->mouse_highlight.r,
+                           color_scheme->mouse_highlight.g,
+                           color_scheme->mouse_highlight.b,
+                           color_scheme->mouse_highlight.a);
 
     SDL_RenderFillRect(renderer, &highlight_rect);
     SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
@@ -337,10 +337,9 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
   // vertical scrollbar background
   SDL_Rect vertical_scrollbar_bg_rect = {
       ROW_NUMBER_WIDTH, 0, VERTICAL_SCROLLBAR_WIDTH, state->window_height};
-  SDL_SetRenderDrawColor(renderer, get_color_scheme()->scrollbar_bg.r,
-                         get_color_scheme()->scrollbar_bg.g,
-                         get_color_scheme()->scrollbar_bg.b,
-                         get_color_scheme()->scrollbar_bg.a);
+  SDL_SetRenderDrawColor(
+      renderer, color_scheme->scrollbar_bg.r, color_scheme->scrollbar_bg.g,
+      color_scheme->scrollbar_bg.b, color_scheme->scrollbar_bg.a);
   SDL_RenderFillRect(renderer, &vertical_scrollbar_bg_rect);
 
   // vertical scrollbar foreground
@@ -352,10 +351,9 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
       VERTICAL_SCROLLBAR_WIDTH,
       height_hundred_percent * state->window_height /
           state->max_vertical_offset};
-  SDL_SetRenderDrawColor(renderer, get_color_scheme()->scrollbar_fg.r,
-                         get_color_scheme()->scrollbar_fg.g,
-                         get_color_scheme()->scrollbar_fg.b,
-                         get_color_scheme()->scrollbar_fg.a);
+  SDL_SetRenderDrawColor(
+      renderer, color_scheme->scrollbar_fg.r, color_scheme->scrollbar_fg.g,
+      color_scheme->scrollbar_fg.b, color_scheme->scrollbar_fg.a);
   SDL_RenderFillRect(renderer, &vertical_scrollbar_fg_rect);
 
   // horizontal scrollbar background
@@ -364,10 +362,9 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
         HORIZONTAL_PADDING - ROW_NUMBER_PADDING,
         state->window_height - HORIZONTAL_SCROLLBAR_HEIGHT, state->window_width,
         HORIZONTAL_SCROLLBAR_HEIGHT};
-    SDL_SetRenderDrawColor(renderer, get_color_scheme()->scrollbar_bg.r,
-                           get_color_scheme()->scrollbar_bg.g,
-                           get_color_scheme()->scrollbar_bg.b,
-                           get_color_scheme()->scrollbar_bg.a);
+    SDL_SetRenderDrawColor(
+        renderer, color_scheme->scrollbar_bg.r, color_scheme->scrollbar_bg.g,
+        color_scheme->scrollbar_bg.b, color_scheme->scrollbar_bg.a);
     SDL_RenderFillRect(renderer, &horizontal_scrollbar_bg_rect);
 
     // horizontal scrollbar foreground
@@ -379,10 +376,9 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
         width_hundred_percent * state->window_height /
             state->max_horizontal_offset,
         HORIZONTAL_SCROLLBAR_HEIGHT};
-    SDL_SetRenderDrawColor(renderer, get_color_scheme()->scrollbar_fg.r,
-                           get_color_scheme()->scrollbar_fg.g,
-                           get_color_scheme()->scrollbar_fg.b,
-                           get_color_scheme()->scrollbar_fg.a);
+    SDL_SetRenderDrawColor(
+        renderer, color_scheme->scrollbar_fg.r, color_scheme->scrollbar_fg.g,
+        color_scheme->scrollbar_fg.b, color_scheme->scrollbar_fg.a);
     SDL_RenderFillRect(renderer, &horizontal_scrollbar_fg_rect);
   }
 
@@ -540,22 +536,22 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
   int row = 0;
   int col = 0;
 
-  SDL_Color text_color = get_color_scheme()->fg;
+  SDL_Color text_color = color_scheme->fg;
 
   for (int i = 0; i < tokens_count; i += 1) {
 
     if (tokens[i]->t == TOKEN_STRING) {
-      text_color = get_color_scheme()->strings;
+      text_color = color_scheme->strings;
     } else if (tokens[i]->t == TOKEN_NUMBER) {
-      text_color = get_color_scheme()->numbers;
+      text_color = color_scheme->numbers;
     } else if (tokens[i]->t == TOKEN_CODE_KEYWORD) {
-      text_color = get_color_scheme()->code_keywords;
+      text_color = color_scheme->code_keywords;
     } else if (tokens[i]->t == TOKEN_COMMENT_KEYWORD) {
-      text_color = get_color_scheme()->comment_keywords;
+      text_color = color_scheme->comment_keywords;
     } else if (tokens[i]->t == TOKEN_COMMENT) {
-      text_color = get_color_scheme()->comments;
+      text_color = color_scheme->comments;
     } else {
-      text_color = get_color_scheme()->fg;
+      text_color = color_scheme->fg;
     }
 
     SDL_Surface *text_surface =
@@ -645,8 +641,8 @@ void update_clearing_texture(SDL_Renderer *renderer, State *state) {
   }
   state->clearing = SDL_CreateTexture(renderer, 0, 0, state->window_width,
                                       state->window_height);
-  SDL_SetTextureColorMod(state->clearing, get_color_scheme()->bg.r,
-                         get_color_scheme()->bg.g, get_color_scheme()->bg.b);
+  SDL_SetTextureColorMod(state->clearing, color_scheme->bg.r,
+                         color_scheme->bg.g, color_scheme->bg.b);
 }
 
 // update_textures frees existing textures
@@ -700,9 +696,8 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     SDL_Color prev = {0};
     SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                            (Uint8 *)&prev.b, (Uint8 *)&prev.a);
-    SDL_SetRenderDrawColor(renderer, get_color_scheme()->bg.r,
-                           get_color_scheme()->bg.g, get_color_scheme()->bg.b,
-                           get_color_scheme()->bg.a);
+    SDL_SetRenderDrawColor(renderer, color_scheme->bg.r, color_scheme->bg.g,
+                           color_scheme->bg.b, color_scheme->bg.a);
     SDL_Rect clearing_rect = {0, 0, HORIZONTAL_PADDING, state->window_height};
     SDL_RenderFillRect(renderer, &clearing_rect);
     SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
@@ -992,9 +987,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     SDL_Quit();
     return EXIT_FAILURE;
   }
-  SDL_SetRenderDrawColor(renderer, get_color_scheme()->bg.r,
-                         get_color_scheme()->bg.g, get_color_scheme()->bg.b,
-                         get_color_scheme()->bg.a);
+  SDL_SetRenderDrawColor(renderer, color_scheme->bg.r, color_scheme->bg.g,
+                         color_scheme->bg.b, color_scheme->bg.a);
 
   int contents_len = 0;
   char *contents = read_contents(filename, &contents_len);

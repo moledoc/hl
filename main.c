@@ -187,11 +187,14 @@ int main(int argc, char **argv) {
 
   if (color_scheme_name != NULL) {
     if (strcmp(color_scheme_name, "light") == 0) {
-      color_scheme = default_light_color_scheme;
+      // color_scheme = &color_schemes[COLOR_SCHEME_LIGHT];
+      color_scheme_idx = COLOR_SCHEME_LIGHT;
     } else if (strcmp(color_scheme_name, "dark") == 0) {
-      color_scheme = default_dark_color_scheme;
-    };
+      // color_scheme = &color_schemes[COLOR_SCHEME_DARK];
+      color_scheme_idx = COLOR_SCHEME_DARK;
+    }
   };
+  color_scheme = &color_schemes[color_scheme_idx];
 
   int ret = 0;
   if (mode == MODE_GUI) {
