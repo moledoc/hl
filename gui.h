@@ -471,7 +471,7 @@ void row_nrs_to_textures(SDL_Renderer *renderer, TTF_Font *font, int font_size,
                          int rows, State *state) {
   Texture **textures = calloc(rows, sizeof(Texture *));
 
-  SDL_Color color = MAGENTA;
+  SDL_Color color = color_scheme->numbers;
 
   int local_vertical_offset = 0;
 
