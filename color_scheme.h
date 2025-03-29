@@ -28,6 +28,7 @@ enum COLOR_SCHEME_NAMES {
   COLOR_SCHEME_DARK,
   COLOR_SCHEME_LIGHT,
   COLOR_SCHEME_GRUVBOX_DARK,
+  COLOR_SCHEME_GRUVBOX_LIGHT,
   COLOR_SCHEME_COUNT
 };
 
@@ -81,8 +82,8 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
         {
             .bg = rgb_to_sdl_color(0x282828),
             .fg = rgb_to_sdl_color(0xebdbb2),
-            .mouse_highlight = rgb_to_sdl_color(0xd5c4a1),
-            .scrollbar_bg = rgb_to_sdl_color(0xa88984),
+            .mouse_highlight = rgb_to_sdl_color(0xa88984),
+            .scrollbar_bg = rgb_to_sdl_color(0xbdae93),
             .scrollbar_fg = rgb_to_sdl_color(0x928374),
             .strings = rgb_to_sdl_color(0x689d6a),
             .numbers = rgb_to_sdl_color(0xb16286),
@@ -90,4 +91,19 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .comment_keywords = rgb_to_sdl_color(0xd79921),
             .comments = rgb_to_sdl_color(0x928374),
         },
+
+        // GRUVBOX LIGHT
+        {
+            .bg = rgb_to_sdl_color(0xfbf1c7),
+            .fg = rgb_to_sdl_color(0x3c3836),
+            .mouse_highlight = rgb_to_sdl_color(0xebdbb2),
+            .scrollbar_bg = rgb_to_sdl_color(0xd5c4a1),
+            .scrollbar_fg = rgb_to_sdl_color(0x928374),
+            .strings = rgb_to_sdl_color(0x689d6a),
+            .numbers = rgb_to_sdl_color(0xb16286),
+            .code_keywords = rgb_to_sdl_color(0x458588),
+            .comment_keywords = rgb_to_sdl_color(0xd79921),
+            .comments = rgb_to_sdl_color(0x928374),
+        },
+
     };
