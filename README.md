@@ -57,6 +57,13 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- [x] double-click to highlight a word
 		- [ ] triple-click or double click beginning/end of line to highlight a line
 	- [x] copy-paste highlighted text
+	- [x] colorschemes; currently:
+		- [x] light (default)
+		- [x] dark
+		- [x] gruvbox-light
+		- [x] gruvbox-dark
+		- [x] solarized-light
+		- [x] solarized-dark
 	- [ ] soft-wrap text
 	- [x] row and col numbers
 		- MAYBE: `jump to <path>:<line>:<col>` support
@@ -91,7 +98,7 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [x] `make
 	- [ ] something inspired by [nobuild](https://github.com/tsoding/nob.h) instead of `make`
 - [x] merge tokenize_test into the main file
-- [ ] commandline arguments to toggle different functionality; eg tui vs gui mode, overriding comment/code style, etc
+- [x] commandline arguments to toggle different functionality; eg tui vs gui mode, overriding comment/code style, etc
 	- [x] override what to color/what not to color
 - [ ] resolve TODOs and others
 - [ ] placeholder
