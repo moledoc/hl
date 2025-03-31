@@ -41,6 +41,10 @@ int FONT_SIZE = DEFAULT_FONT_SIZE;      // MAYBE: move to state
 int HORIZONTAL_PADDING = (HORIZONTAL_PADDING_BASE);
 int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 
+#define SEARCH_BUF_SIZE 4096
+char SEARCH_BUF[SEARCH_BUF_SIZE] = {0};
+int SEARCH_BUF_OFFSET = 0;
+
 typedef struct {
   struct SDL_Texture *texture;
   Token *token;
@@ -58,6 +62,13 @@ typedef struct {
 } Coord;
 
 typedef struct {
+  struct StringMatch *next;
+  struct StringMatch *prev;
+  Coord *start;
+  Coord *end;
+} StringMatch;
+
+typedef struct {
   int window_width;
   int window_height;
   //
@@ -71,8 +82,8 @@ typedef struct {
   float font_scale_factor;
   Uint64 font_size_unchanged_since;
   //
-  bool ctrl_pressed;
-  bool shift_pressed;
+  bool ctrl_pressed;  // TODO: use sdl_event.key.keysym.mod == KMOD_CTRL
+  bool shift_pressed; // TODO: use sdl_event.key.keysym.mod == KMOD_SHIFT
   bool left_mouse_button_pressed;
   //
   int max_horizontal_offset;
@@ -90,6 +101,8 @@ typedef struct {
   //
   Texture **row_nr_textures;
   int rows_count;
+  //
+  bool search_mode;
 } State;
 
 void scale_texture_font(Texture **textures, int textures_count, State *state) {
@@ -964,6 +977,145 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                              color_scheme->bg.b, color_scheme->bg.a);
       state->color_scheme_modified = true;
       // NEXT COLORSCHEME END
+
+      // ENABLE SEARCH START
+    } else if (!state->search_mode && state->ctrl_pressed &&
+               sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_f) {
+      state->search_mode = true;
+      // ENABLE SEARCH END
+
+      // DISABLE SEARCH START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_ESCAPE) {
+      state->search_mode = false;
+      // DISABLE SEARCH END
+
+      // SEARCH TYPE START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym != SDLK_RETURN &&
+               SEARCH_BUF_OFFSET + 1 < SEARCH_BUF_SIZE) {
+      if (sdl_event.key.keysym.sym == SDLK_BACKSPACE) {
+        if (SEARCH_BUF_OFFSET > 0) {
+          SEARCH_BUF_OFFSET -= 1;
+        }
+        SEARCH_BUF[SEARCH_BUF_OFFSET] = '\0';
+      }
+
+      if ('a' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= 'z') {
+        char c = sdl_event.key.keysym.sym;
+        if (sdl_event.key.keysym.mod & KMOD_SHIFT) {
+          c = c - 'a' + 'A';
+        }
+        SEARCH_BUF[SEARCH_BUF_OFFSET] = c;
+        SEARCH_BUF_OFFSET += 1;
+      }
+
+      if (('0' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= '9' ||
+           sdl_event.key.keysym.sym == '`' || sdl_event.key.keysym.sym == '-' ||
+           sdl_event.key.keysym.sym == '=' || sdl_event.key.keysym.sym == '[' ||
+           sdl_event.key.keysym.sym == ']' || sdl_event.key.keysym.sym == ';' ||
+           sdl_event.key.keysym.sym == '\'' ||
+           sdl_event.key.keysym.sym == '\\' ||
+           sdl_event.key.keysym.sym == ',' || sdl_event.key.keysym.sym == '.' ||
+           sdl_event.key.keysym.sym == '/' || sdl_event.key.keysym.sym == ' ' ||
+           sdl_event.key.keysym.sym == '\t' ||
+           sdl_event.key.keysym.sym == '\n') &&
+          !(sdl_event.key.keysym.mod & KMOD_SHIFT)) {
+        SEARCH_BUF[SEARCH_BUF_OFFSET] = sdl_event.key.keysym.sym;
+        SEARCH_BUF_OFFSET += 1;
+      }
+
+      if (('0' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= '9' ||
+           sdl_event.key.keysym.sym == '`' || sdl_event.key.keysym.sym == '-' ||
+           sdl_event.key.keysym.sym == '=' || sdl_event.key.keysym.sym == '[' ||
+           sdl_event.key.keysym.sym == ']' || sdl_event.key.keysym.sym == ';' ||
+           sdl_event.key.keysym.sym == '\'' ||
+           sdl_event.key.keysym.sym == '\\' ||
+           sdl_event.key.keysym.sym == ',' || sdl_event.key.keysym.sym == '.' ||
+           sdl_event.key.keysym.sym == '/') &&
+          sdl_event.key.keysym.mod & KMOD_SHIFT) {
+        switch (sdl_event.key.keysym.sym) {
+        case '1':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '!';
+          break;
+        case '2':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '@';
+          break;
+        case '3':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '#';
+          break;
+        case '4':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '$';
+          break;
+        case '5':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '%';
+          break;
+        case '6':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '^';
+          break;
+        case '7':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '&';
+          break;
+        case '8':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '*';
+          break;
+        case '9':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '(';
+          break;
+        case '0':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = ')';
+          break;
+        case '`':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '~';
+          break;
+        case '-':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '_';
+          break;
+        case '=':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '+';
+          break;
+        case '[':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '{';
+          break;
+        case ']':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '}';
+          break;
+        case ';':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = ':';
+          break;
+        case '\'':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '"';
+          break;
+        case '\\':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '|';
+          break;
+        case ',':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '<';
+          break;
+        case '.':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '>';
+          break;
+        case '/':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '?';
+          break;
+        }
+        SEARCH_BUF_OFFSET += 1;
+      }
+      // SEARCH TYPE END
+
+      // SEARCH START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_RETURN) {
+      printf("RETURN: %s\n", SEARCH_BUF);
+      // string_count_search()
+      // SEARCH END
+
+      //
     }
 
     SDL_RenderClear(renderer);

@@ -68,6 +68,7 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [x] row and col numbers
 		- MAYBE: `jump to <path>:<line>:<col>` support
 	- [ ] text search
+		- MAYBE: TODO: more elaborate search
 	- [ ] display cursor
 	- [ ] vendor SDL2 and SDL2_ttf to simplify dependencies
 	- [ ] move tokens and textures to state
