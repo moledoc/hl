@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
   enum COLOR color_comment_keywords = COLOR_NOT_SET;
   enum COLOR color_numbers = COLOR_NOT_SET;
   enum COLOR color_strings = COLOR_NOT_SET;
+  char *color_scheme_name = NULL;
 
   for (int i = 1; i < argc; ++i) {
     char *flag = argv[i];
@@ -74,7 +75,9 @@ int main(int argc, char **argv) {
                i + 1 < argc) {
       filename = argv[i + 1];
       i += 1;
-    } else if (i == argc - 1) {
+    } else if (strcmp("-cs", flag) == 0 && i + 1 < argc) {
+      color_scheme_name = argv[i + 1];
+    } else if (filename == NULL && i == argc - 1) {
       filename = flag;
       //
     } else if (filename == NULL) {
@@ -181,6 +184,23 @@ int main(int argc, char **argv) {
   if (color_strings != COLOR_NOT_SET) {
     tokenizer_config->color_strings = color_strings;
   };
+
+  if (color_scheme_name != NULL) {
+    if (strcmp(color_scheme_name, "light") == 0) {
+      color_scheme_idx = COLOR_SCHEME_LIGHT;
+    } else if (strcmp(color_scheme_name, "dark") == 0) {
+      color_scheme_idx = COLOR_SCHEME_DARK;
+    } else if (strcmp(color_scheme_name, "gruvbox-light") == 0) {
+      color_scheme_idx = COLOR_SCHEME_GRUVBOX_LIGHT;
+    } else if (strcmp(color_scheme_name, "gruvbox-dark") == 0) {
+      color_scheme_idx = COLOR_SCHEME_GRUVBOX_DARK;
+    } else if (strcmp(color_scheme_name, "solarized-light") == 0) {
+      color_scheme_idx = COLOR_SCHEME_SOLARIZED_LIGHT;
+    } else if (strcmp(color_scheme_name, "solarized-dark") == 0) {
+      color_scheme_idx = COLOR_SCHEME_SOLARIZED_DARK;
+    }
+  };
+  color_scheme = &color_schemes[color_scheme_idx];
 
   int ret = 0;
   if (mode == MODE_GUI) {
