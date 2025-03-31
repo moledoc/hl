@@ -25,12 +25,12 @@ typedef struct {
 } ColorScheme;
 
 enum COLOR_SCHEME_NAMES {
-  COLOR_SCHEME_DARK,
   COLOR_SCHEME_LIGHT,
-  COLOR_SCHEME_GRUVBOX_DARK,
+  COLOR_SCHEME_DARK,
   COLOR_SCHEME_GRUVBOX_LIGHT,
-  COLOR_SCHEME_SOLARIZED_DARK,
+  COLOR_SCHEME_GRUVBOX_DARK,
   COLOR_SCHEME_SOLARIZED_LIGHT,
+  COLOR_SCHEME_SOLARIZED_DARK,
   COLOR_SCHEME_COUNT
 };
 
@@ -52,20 +52,6 @@ int color_scheme_idx = 0;
 ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
     (ColorScheme[COLOR_SCHEME_COUNT]){
 
-        // DARK
-        {
-            .bg = (SDL_Color)BLACK,
-            .fg = (SDL_Color)WHITE,
-            .mouse_highlight = (SDL_Color){100, 100, 100, 128},
-            .scrollbar_bg = (SDL_Color){192, 192, 192, 64},
-            .scrollbar_fg = (SDL_Color){128, 128, 128, 128},
-            .strings = (SDL_Color){0, 186, 0, 255},
-            .numbers = (SDL_Color)MAGENTA,
-            .code_keywords = (SDL_Color){0, 169, 255, 255},
-            .comment_keywords = (SDL_Color){255, 196, 0, 255},
-            .comments = (SDL_Color)GREY,
-        },
-
         // LIGHT
         {
             .bg = (SDL_Color)WHITE,
@@ -80,18 +66,18 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .comments = (SDL_Color)GREY,
         },
 
-        // GRUVBOX DARK
+        // DARK
         {
-            .bg = rgb_to_sdl_color(0x282828),
-            .fg = rgb_to_sdl_color(0xebdbb2),
-            .mouse_highlight = rgb_to_sdl_color(0xa88984),
-            .scrollbar_bg = rgb_to_sdl_color(0xbdae93),
-            .scrollbar_fg = rgb_to_sdl_color(0x928374),
-            .strings = rgb_to_sdl_color(0x689d6a),
-            .numbers = rgb_to_sdl_color(0xb16286),
-            .code_keywords = rgb_to_sdl_color(0x458588),
-            .comment_keywords = rgb_to_sdl_color(0xd79921),
-            .comments = rgb_to_sdl_color(0x928374),
+            .bg = (SDL_Color)BLACK,
+            .fg = (SDL_Color)WHITE,
+            .mouse_highlight = (SDL_Color){100, 100, 100, 128},
+            .scrollbar_bg = (SDL_Color){192, 192, 192, 64},
+            .scrollbar_fg = (SDL_Color){128, 128, 128, 128},
+            .strings = (SDL_Color){0, 186, 0, 255},
+            .numbers = (SDL_Color)MAGENTA,
+            .code_keywords = (SDL_Color){0, 169, 255, 255},
+            .comment_keywords = (SDL_Color){255, 196, 0, 255},
+            .comments = (SDL_Color)GREY,
         },
 
         // GRUVBOX LIGHT
@@ -108,18 +94,18 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .comments = rgb_to_sdl_color(0x928374),
         },
 
-        // SOLARIZED DARK
+        // GRUVBOX DARK
         {
-            .bg = rgb_to_sdl_color(0x002b36),
-            .fg = rgb_to_sdl_color(0x839496),
-            .mouse_highlight = rgb_to_sdl_color(0x073642),
-            .scrollbar_bg = rgb_to_sdl_color(0x93a1a1),
-            .scrollbar_fg = rgb_to_sdl_color(0x657b83),
-            .comments = rgb_to_sdl_color(0x586e75),
-            .strings = rgb_to_sdl_color(0x859900),
-            .numbers = rgb_to_sdl_color(0xd33682),
-            .code_keywords = rgb_to_sdl_color(0x268bd2),
-            .comment_keywords = rgb_to_sdl_color(0xb58900),
+            .bg = rgb_to_sdl_color(0x282828),
+            .fg = rgb_to_sdl_color(0xebdbb2),
+            .mouse_highlight = rgb_to_sdl_color(0xa88984),
+            .scrollbar_bg = rgb_to_sdl_color(0xbdae93),
+            .scrollbar_fg = rgb_to_sdl_color(0x928374),
+            .strings = rgb_to_sdl_color(0x689d6a),
+            .numbers = rgb_to_sdl_color(0xb16286),
+            .code_keywords = rgb_to_sdl_color(0x458588),
+            .comment_keywords = rgb_to_sdl_color(0xd79921),
+            .comments = rgb_to_sdl_color(0x928374),
         },
 
         // SOLARIZED LIGHT
@@ -130,6 +116,20 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .scrollbar_bg = rgb_to_sdl_color(0x839496),
             .scrollbar_fg = rgb_to_sdl_color(0x586e75),
             .comments = rgb_to_sdl_color(0x93a1a1),
+            .strings = rgb_to_sdl_color(0x859900),
+            .numbers = rgb_to_sdl_color(0xd33682),
+            .code_keywords = rgb_to_sdl_color(0x268bd2),
+            .comment_keywords = rgb_to_sdl_color(0xb58900),
+        },
+
+        // SOLARIZED DARK
+        {
+            .bg = rgb_to_sdl_color(0x002b36),
+            .fg = rgb_to_sdl_color(0x839496),
+            .mouse_highlight = rgb_to_sdl_color(0x073642),
+            .scrollbar_bg = rgb_to_sdl_color(0x93a1a1),
+            .scrollbar_fg = rgb_to_sdl_color(0x657b83),
+            .comments = rgb_to_sdl_color(0x586e75),
             .strings = rgb_to_sdl_color(0x859900),
             .numbers = rgb_to_sdl_color(0xd33682),
             .code_keywords = rgb_to_sdl_color(0x268bd2),

@@ -187,11 +187,17 @@ int main(int argc, char **argv) {
 
   if (color_scheme_name != NULL) {
     if (strcmp(color_scheme_name, "light") == 0) {
-      // color_scheme = &color_schemes[COLOR_SCHEME_LIGHT];
       color_scheme_idx = COLOR_SCHEME_LIGHT;
     } else if (strcmp(color_scheme_name, "dark") == 0) {
-      // color_scheme = &color_schemes[COLOR_SCHEME_DARK];
       color_scheme_idx = COLOR_SCHEME_DARK;
+    } else if (strcmp(color_scheme_name, "gruvbox-light") == 0) {
+      color_scheme_idx = COLOR_SCHEME_GRUVBOX_LIGHT;
+    } else if (strcmp(color_scheme_name, "gruvbox-dark") == 0) {
+      color_scheme_idx = COLOR_SCHEME_GRUVBOX_DARK;
+    } else if (strcmp(color_scheme_name, "solarized-light") == 0) {
+      color_scheme_idx = COLOR_SCHEME_SOLARIZED_LIGHT;
+    } else if (strcmp(color_scheme_name, "solarized-dark") == 0) {
+      color_scheme_idx = COLOR_SCHEME_SOLARIZED_DARK;
     }
   };
   color_scheme = &color_schemes[color_scheme_idx];
