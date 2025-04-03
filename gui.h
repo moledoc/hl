@@ -90,6 +90,8 @@ typedef struct {
   //
   Texture **row_nr_textures;
   int rows_count;
+  //
+  bool soft_wrap;
 } State;
 
 void scale_texture_font(Texture **textures, int textures_count, State *state) {
@@ -664,19 +666,53 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
 
   handle_highlight(renderer, textures, textures_count, state);
 
+  int soft_wrap_horizontal_offset = 0;
+  int soft_wrap_vertical_offset = 0;
+  bool same_line = false;
+  SDL_Rect *row_nr_rect =
+      calloc(state->rows_count, sizeof(SDL_Rect)); // TODO: make more efficient
+  int rows_offset = 0;
+  int cur_row = -1;
   for (int i = 0; i < textures_count; i += 1) {
 
-    int texture_start_width =
-        HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
-    int texture_start_height =
-        VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
+    int texture_start_width = HORIZONTAL_PADDING + textures[i]->x +
+                              state->horizontal_scroll +
+                              soft_wrap_horizontal_offset;
+    int texture_start_height = VERTICAL_PADDING + textures[i]->y +
+                               state->vertical_scroll +
+                               soft_wrap_vertical_offset;
 
-    // NOTE: only render what fits on window
-    // continue if before window
-    // break if after window
-    if (texture_start_height + textures[i]->h < VERTICAL_PADDING ||
-        texture_start_width > state->window_width ||
-        texture_start_width + textures[i]->w < HORIZONTAL_PADDING) {
+    // NOTE: only render what fits on window vertically,
+    // horizontally we're soft wrapping
+    if (state->soft_wrap) {
+      if (texture_start_height + textures[i]->h < VERTICAL_PADDING ||
+          texture_start_width + textures[i]->w < HORIZONTAL_PADDING) {
+        continue;
+      } else if (state->window_height <= texture_start_height) {
+        break;
+      } else if (textures[i]->token->t == TOKEN_NEWLINE) {
+        soft_wrap_horizontal_offset = 0;
+        same_line = false;
+      } else if (texture_start_width + textures[i]->w > state->window_width) {
+        if (!same_line || textures[i]->w + soft_wrap_horizontal_offset >
+                              state->window_width) {
+          soft_wrap_vertical_offset += textures[i]->h;
+          same_line = true;
+        }
+        texture_start_width = HORIZONTAL_PADDING + state->horizontal_scroll +
+                              +soft_wrap_horizontal_offset;
+        texture_start_height = VERTICAL_PADDING + textures[i]->y +
+                               state->vertical_scroll +
+                               soft_wrap_vertical_offset;
+        soft_wrap_horizontal_offset += textures[i]->w;
+      }
+
+      // NOTE: only render what fits on window
+      // continue if before window
+      // break if after window
+    } else if (texture_start_height + textures[i]->h < VERTICAL_PADDING ||
+               texture_start_width > state->window_width ||
+               texture_start_width + textures[i]->w < HORIZONTAL_PADDING) {
       continue;
     } else if (state->window_height <= texture_start_height) {
       break;
@@ -690,6 +726,22 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
     SDL_Rect text_rect = {texture_start_width, texture_start_height,
                           textures[i]->w, textures[i]->h};
     SDL_RenderCopy(renderer, textures[i]->texture, NULL, &text_rect);
+
+    if (0 && cur_row < textures[i]->r) {
+      cur_row = textures[i]->r;
+      int texture_start_width = state->row_nr_textures[i]->x +
+                                ROW_NUMBER_WIDTH - ROW_NUMBER_PADDING / 2 -
+                                state->row_nr_textures[i]->w;
+
+      int texture_start_height = VERTICAL_PADDING +
+                                 state->row_nr_textures[i]->y +
+                                 state->vertical_scroll;
+
+      row_nr_rect[rows_offset] = (SDL_Rect){
+          texture_start_width, texture_start_height,
+          state->row_nr_textures[i]->w, state->row_nr_textures[i]->h};
+      rows_offset += 1;
+    }
   }
 
   // NOTE: we clear the area where we need to draw scrollbar and row numbers
@@ -706,30 +758,11 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
 
   handle_scrollbars(renderer, state);
 
-  for (int i = 0; i < state->rows_count; i += 1) {
-
-    int texture_start_width = state->row_nr_textures[i]->x + ROW_NUMBER_WIDTH -
-                              ROW_NUMBER_PADDING / 2 -
-                              state->row_nr_textures[i]->w;
-
-    int texture_start_height = VERTICAL_PADDING + state->row_nr_textures[i]->y +
-                               state->vertical_scroll;
-
-    // NOTE: only render what fits on window
-    // continue if before window
-    // break if after window
-    if (texture_start_height + state->row_nr_textures[i]->h < 0) {
-      continue;
-    } else if (state->window_height <= texture_start_height) {
-      break;
-    }
-
-    SDL_Rect row_nr_rect = {texture_start_width, texture_start_height,
-                            state->row_nr_textures[i]->w,
-                            state->row_nr_textures[i]->h};
+  for (int i = 0; i < rows_offset; i += 1) {
     SDL_RenderCopy(renderer, state->row_nr_textures[i]->texture, NULL,
-                   &row_nr_rect);
+                   &row_nr_rect[i]);
   }
+  free(row_nr_rect);
 
   return EXIT_SUCCESS;
 }
@@ -853,8 +886,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       // SCROLL VERTICAL END
 
       // SCROLL HORIZONTAL START
-    } else if (!state->ctrl_pressed && sdl_event.type == SDL_MOUSEWHEEL &&
-               sdl_event.wheel.x != 0) {
+    } else if (!state->soft_wrap && !state->ctrl_pressed &&
+               sdl_event.type == SDL_MOUSEWHEEL && sdl_event.wheel.x != 0) {
 
       // NOTE: if lower_bound is 0, then no horizontal scrolling
       state->horizontal_scroll = clamp(
@@ -1034,6 +1067,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   state->font_scale_factor = 1.0f;
   state->font_size_unchanged_since = SDL_GetTicks64();
   update_clearing_texture(renderer, state);
+  state->soft_wrap = true; // REMOVEME: tmp for dev
 
   int textures_count = 0;
   Texture **text_textures = tokens_to_textures(
