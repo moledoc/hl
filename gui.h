@@ -72,6 +72,8 @@ typedef struct {
   int window_width;
   int window_height;
   //
+  TTF_Font *font;
+  //
   SDL_Texture *clearing;
   //
   bool keep_window_open;
@@ -399,6 +401,51 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
   SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
 }
 
+void handle_searchbox(SDL_Renderer *renderer, State *state) {
+
+  if (!state->search_mode) {
+    return;
+  }
+
+  SDL_Surface *search_surface =
+      TTF_RenderUTF8_Solid(state->font, SEARCH_BUF, color_scheme->search_fg);
+  if (search_surface == NULL) {
+    fprintf(stderr, "[WARNING]: failed to create search text surface: %s\n",
+            TTF_GetError());
+    return;
+  }
+
+  SDL_Texture *search_texture =
+      SDL_CreateTextureFromSurface(renderer, search_surface);
+
+  if (search_texture == NULL) {
+    fprintf(stderr, "failed to create search text texture: %s\n",
+            SDL_GetError());
+    SDL_FreeSurface(search_surface);
+    return;
+  }
+
+  int start_x = 0;
+  int start_y = state->window_height - search_surface->h;
+
+  SDL_Color prev = {0};
+  SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                         (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+  SDL_SetRenderDrawColor(renderer, color_scheme->search_bg.r,
+                         color_scheme->search_bg.g, color_scheme->search_bg.b,
+                         color_scheme->search_bg.a);
+  SDL_Rect clearing_rect = {start_x, start_y, state->window_width,
+                            search_surface->h};
+  SDL_RenderFillRect(renderer, &clearing_rect);
+  SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+
+  SDL_Rect rect = {start_x, start_y, search_surface->w, search_surface->h};
+  SDL_RenderCopy(renderer, search_texture, NULL, &rect);
+
+  SDL_FreeSurface(search_surface);
+  SDL_DestroyTexture(search_texture);
+}
+
 // NOTE: code shared with handle_highlight, but too early to abstract anything.
 // Just a note that any changes here might also be needed to be done in
 // handle_highlight.
@@ -480,8 +527,8 @@ void handle_copy_to_clipboard(Texture **textures, int textures_count,
 }
 
 // allocs memory
-void row_nrs_to_textures(SDL_Renderer *renderer, TTF_Font *font, int font_size,
-                         int rows, State *state) {
+void row_nrs_to_textures(SDL_Renderer *renderer, int font_size, int rows,
+                         State *state) {
   Texture **textures = calloc(rows, sizeof(Texture *));
 
   SDL_Color color = color_scheme->numbers;
@@ -493,7 +540,7 @@ void row_nrs_to_textures(SDL_Renderer *renderer, TTF_Font *font, int font_size,
   for (int i = 0; i < rows; i += 1) {
 
     snprintf(buf, sizeof(buf), "%d", i + 1);
-    SDL_Surface *row_nr_surface = TTF_RenderUTF8_Solid(font, buf, color);
+    SDL_Surface *row_nr_surface = TTF_RenderUTF8_Solid(state->font, buf, color);
     if (row_nr_surface == NULL) {
       fprintf(stderr, "failed to create row nr surface: %s\n", TTF_GetError());
       return;
@@ -537,8 +584,8 @@ void row_nrs_to_textures(SDL_Renderer *renderer, TTF_Font *font, int font_size,
 }
 
 // allocs memory
-Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
-                             int font_size, Token **tokens, int tokens_count,
+Texture **tokens_to_textures(SDL_Renderer *renderer, int font_size,
+                             Token **tokens, int tokens_count,
                              int *textures_count, State *state) {
   Texture **textures = calloc(tokens_count, sizeof(Texture *));
 
@@ -569,7 +616,7 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     }
 
     SDL_Surface *text_surface =
-        TTF_RenderUTF8_Solid(font, tokens[i]->v, text_color);
+        TTF_RenderUTF8_Solid(state->font, tokens[i]->v, text_color);
     if (text_surface == NULL) {
       fprintf(stderr, "failed to create text surface: %s\n", TTF_GetError());
       return NULL;
@@ -630,7 +677,7 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     state->horizontal_scroll = 0;
   }
 
-  row_nrs_to_textures(renderer, font, font_size, row, state);
+  row_nrs_to_textures(renderer, font_size, row, state);
   if (row - 1 >= 0) {
     ROW_NUMBER_WIDTH = state->row_nr_textures[row - 1]->w + ROW_NUMBER_PADDING;
     HORIZONTAL_PADDING = HORIZONTAL_PADDING_BASE + ROW_NUMBER_WIDTH;
@@ -663,12 +710,12 @@ void update_clearing_texture(SDL_Renderer *renderer, State *state) {
 // and creates new textures from tokens
 // frees and allocs memory
 Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
-                          TTF_Font *font, int font_size, Token **tokens,
-                          int tokens_count, int *textures_count, State *state) {
+                          int font_size, Token **tokens, int tokens_count,
+                          int *textures_count, State *state) {
   free_textures(textures, *textures_count);
   free_textures(state->row_nr_textures, state->rows_count);
   *textures_count = 0;
-  return tokens_to_textures(renderer, font, FONT_SIZE, tokens, tokens_count,
+  return tokens_to_textures(renderer, FONT_SIZE, tokens, tokens_count,
                             textures_count, state);
 }
 
@@ -744,13 +791,15 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
                    &row_nr_rect);
   }
 
+  // handle search
+  handle_searchbox(renderer, state);
+
   return EXIT_SUCCESS;
 }
 
 int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
-                      SDL_Renderer *renderer, TTF_Font *font,
-                      Texture **text_textures, int textures_count,
-                      State *state) {
+                      SDL_Renderer *renderer, Texture **text_textures,
+                      int textures_count, State *state) {
 
   int event_count = 0;
   int err = 0;
@@ -888,7 +937,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
 
       FONT_SIZE += FONT_INCREMENT * sign(sdl_event.wheel.y);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
-      TTF_SetFontSize(font, FONT_SIZE);
+      TTF_SetFontSize(state->font, FONT_SIZE);
 
       state->is_font_resized = true;
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
@@ -918,7 +967,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       FONT_SIZE += FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
                    FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_MINUS);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
-      TTF_SetFontSize(font, FONT_SIZE);
+      TTF_SetFontSize(state->font, FONT_SIZE);
 
       state->is_font_resized = true;
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
@@ -941,7 +990,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
 
       if (FONT_SIZE != DEFAULT_FONT_SIZE) {
         FONT_SIZE = DEFAULT_FONT_SIZE;
-        TTF_SetFontSize(font, DEFAULT_FONT_SIZE);
+        TTF_SetFontSize(state->font, DEFAULT_FONT_SIZE);
         state->is_font_resized = true;
         // NOTE: + FONT_RENDERING_DELAY because we want to render right away
         state->font_size_unchanged_since =
@@ -999,7 +1048,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.key.keysym.sym != SDLK_RETURN &&
                SEARCH_BUF_OFFSET + 1 < SEARCH_BUF_SIZE) {
       if (sdl_event.key.keysym.sym == SDLK_BACKSPACE) {
-        if (SEARCH_BUF_OFFSET > 0) {
+        if (SEARCH_BUF_OFFSET > 1) {
           SEARCH_BUF_OFFSET -= 1;
         }
         SEARCH_BUF[SEARCH_BUF_OFFSET] = '\0';
@@ -1111,7 +1160,6 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_RETURN) {
-      printf("RETURN: %s\n", SEARCH_BUF);
       // string_count_search()
       // SEARCH END
 
@@ -1186,10 +1234,14 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   state->font_scale_factor = 1.0f;
   state->font_size_unchanged_since = SDL_GetTicks64();
   update_clearing_texture(renderer, state);
+  state->font = font;
+
+  SEARCH_BUF[SEARCH_BUF_OFFSET] = '/';
+  SEARCH_BUF_OFFSET += 1;
 
   int textures_count = 0;
   Texture **text_textures = tokens_to_textures(
-      renderer, font, FONT_SIZE, tokens, tokens_count, &textures_count, state);
+      renderer, FONT_SIZE, tokens, tokens_count, &textures_count, state);
 
   SDL_RenderClear(renderer);
 
@@ -1216,9 +1268,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     start = SDL_GetTicks64();
 
     SDL_Event sdl_event;
-    handled_event_count =
-        handle_sdl_events(window, sdl_event, renderer, font, text_textures,
-                          textures_count, state);
+    handled_event_count = handle_sdl_events(
+        window, sdl_event, renderer, text_textures, textures_count, state);
     if (!state->keep_window_open) {
       break;
     }
@@ -1232,7 +1283,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
                              &tokens_count);
 
       text_textures =
-          update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
+          update_textures(text_textures, renderer, FONT_SIZE, tokens,
                           tokens_count, &textures_count, state);
 
       SDL_RenderClear(renderer);
@@ -1248,7 +1299,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     } else if (state->color_scheme_modified) {
       state->color_scheme_modified = false;
       text_textures =
-          update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
+          update_textures(text_textures, renderer, FONT_SIZE, tokens,
                           tokens_count, &textures_count, state);
 
       SDL_RenderClear(renderer);
@@ -1267,7 +1318,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
         state->font_scale_factor = 1.0f;
         // MAYBE: TODO: make update_textures parallel safe
         text_textures =
-            update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
+            update_textures(text_textures, renderer, FONT_SIZE, tokens,
                             tokens_count, &textures_count, state);
 
         SDL_RenderClear(renderer);
@@ -1294,6 +1345,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     }
   }
 
+  TTF_CloseFont(state->font);
   SDL_DestroyWindow(window);
   SDL_DestroyRenderer(renderer);
   SDL_Quit();

@@ -22,6 +22,8 @@ typedef struct {
   SDL_Color code_keywords;
   SDL_Color comment_keywords;
   SDL_Color comments;
+  SDL_Color search_bg;
+  SDL_Color search_fg;
 } ColorScheme;
 
 enum COLOR_SCHEME_NAMES {
@@ -64,6 +66,8 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .code_keywords = (SDL_Color)BLUE,
             .comment_keywords = (SDL_Color){255, 196, 0, 255},
             .comments = (SDL_Color)GREY,
+            .search_bg = WHITE,
+            .search_fg = BLACK,
         },
 
         // DARK
@@ -78,6 +82,8 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .code_keywords = (SDL_Color){0, 169, 255, 255},
             .comment_keywords = (SDL_Color){255, 196, 0, 255},
             .comments = (SDL_Color)GREY,
+            .search_bg = BLACK,
+            .search_fg = WHITE,
         },
 
         // GRUVBOX LIGHT
@@ -92,6 +98,8 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .code_keywords = rgb_to_sdl_color(0x458588),
             .comment_keywords = rgb_to_sdl_color(0xd79921),
             .comments = rgb_to_sdl_color(0x928374),
+            .search_bg = rgb_to_sdl_color(0xfbf1c7),
+            .search_fg = rgb_to_sdl_color(0x3c3836),
         },
 
         // GRUVBOX DARK
@@ -106,6 +114,8 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .code_keywords = rgb_to_sdl_color(0x458588),
             .comment_keywords = rgb_to_sdl_color(0xd79921),
             .comments = rgb_to_sdl_color(0x928374),
+            .search_bg = rgb_to_sdl_color(0x282828),
+            .search_fg = rgb_to_sdl_color(0xebdbb2),
         },
 
         // SOLARIZED LIGHT
@@ -120,6 +130,8 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .numbers = rgb_to_sdl_color(0xd33682),
             .code_keywords = rgb_to_sdl_color(0x268bd2),
             .comment_keywords = rgb_to_sdl_color(0xb58900),
+            .search_bg = rgb_to_sdl_color(0xfdf6e3),
+            .search_fg = rgb_to_sdl_color(0x839496),
         },
 
         // SOLARIZED DARK
@@ -134,6 +146,8 @@ ColorScheme color_schemes[COLOR_SCHEME_COUNT] =
             .numbers = rgb_to_sdl_color(0xd33682),
             .code_keywords = rgb_to_sdl_color(0x268bd2),
             .comment_keywords = rgb_to_sdl_color(0xb58900),
+            .search_bg = rgb_to_sdl_color(0x002b36),
+            .search_fg = rgb_to_sdl_color(0x839496),
         },
 
     };
