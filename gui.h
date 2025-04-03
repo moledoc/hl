@@ -1169,6 +1169,12 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_f) {
+      // NOTE: ctrl+shift+f forgets previous search
+      if (sdl_event.key.keysym.mod & KMOD_SHIFT) {
+        search_results = free_search_results();
+        memset(SEARCH_BUF + 1, 0, SEARCH_BUF_OFFSET - 1);
+        SEARCH_BUF_OFFSET = 1;
+      }
       state->search_mode = true;
       // ENABLE SEARCH END
 
