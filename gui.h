@@ -147,9 +147,9 @@ void add_search_result(Coord *start, Coord *end, int start_texture_idx,
 
   // NOTE: set the global variable as current if
   // current is in view and current global var is not
-  if (state->vertical_scroll <= new->start->y &&new->start->y <
-          state->vertical_scroll + state->window_height &&
-      search_results->start->y < state->vertical_scroll) {
+  if (abs(state->vertical_scroll) <= new->start->y &&new->start->y <
+          abs(state->vertical_scroll) + state->window_height &&
+      search_results->start->y < abs(state->vertical_scroll)) {
     search_results = new;
   }
 }
@@ -1340,6 +1340,13 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         } else {
           search_results = search_results->next;
         }
+
+        // NOTE: jump scroll, if search result not in view
+        if (search_results->start->y < abs(state->vertical_scroll) ||
+            abs(state->vertical_scroll) + state->window_height <
+                search_results->start->y) {
+          state->vertical_scroll = -search_results->start->y;
+        }
       }
 
       // NOTE: set highlight
@@ -1348,9 +1355,6 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->highlight_stationary_texture_idx =
           search_results->start_texture_idx;
       state->highlight_moving_texture_idx = search_results->end_texture_idx;
-
-      // NOTE: jump scroll
-      state->vertical_scroll = -search_results->start->y;
 
       // SEARCH END
 
