@@ -1042,6 +1042,24 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->search_mode = false;
       // DISABLE SEARCH END
 
+      // PASTE TO SEARCH START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_v &&
+               sdl_event.key.keysym.mod & KMOD_CTRL) {
+      char *clipboard = SDL_GetClipboardText();
+      int clipboard_len = strlen(clipboard);
+      if (clipboard_len + SEARCH_BUF_OFFSET < SEARCH_BUF_SIZE) {
+        memcpy(SEARCH_BUF + SEARCH_BUF_OFFSET, clipboard, clipboard_len);
+        SEARCH_BUF_OFFSET += clipboard_len;
+      } else {
+        fprintf(stdout,
+                "[WARNING]: search text length (%d) exceeding search buffer "
+                "size (%d)\n",
+                clipboard_len + SEARCH_BUF_OFFSET, SEARCH_BUF_SIZE);
+      }
+      // PASTE TO SEARCH START
+
       // SEARCH TYPE START
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
