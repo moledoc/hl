@@ -62,13 +62,6 @@ typedef struct {
 } Coord;
 
 typedef struct {
-  struct StringMatch *next;
-  struct StringMatch *prev;
-  Coord *start;
-  Coord *end;
-} StringMatch;
-
-typedef struct {
   int window_width;
   int window_height;
   //
@@ -106,6 +99,84 @@ typedef struct {
   //
   bool search_mode;
 } State;
+
+typedef struct SearchResult {
+  struct SearchResult *next;
+  struct SearchResult *prev;
+  Coord *start;
+  Coord *end;
+  char *val;
+} SearchResult;
+
+SearchResult *search_results = NULL;
+
+void add_search_result(Coord *start, Coord *end, State *state) {
+
+  SearchResult *new = calloc(1, sizeof(SearchResult));
+  new->start = calloc(1, sizeof(Coord));
+  new->end = calloc(1, sizeof(Coord));
+  new->start->x = start->x;
+  new->start->y = start->y;
+  new->end->x = end->x;
+  new->end->y = end->y;
+
+  if (search_results == NULL) {
+    new->val = calloc(SEARCH_BUF_OFFSET, sizeof(char));
+    memcpy(new->val, SEARCH_BUF + 1, SEARCH_BUF_OFFSET - 1);
+    new->next = new;
+    new->prev = new;
+    search_results = new;
+    return;
+  }
+  new->val = search_results->val; // NOTE: reuse str pointer; is slightly
+                                  // dangerous, but lets see how badly it goes
+
+  SearchResult *cur = search_results;
+  for (; cur->next != search_results; cur = cur->next) {
+    ;
+  }
+  cur->next = new;
+  new->prev = cur;
+  new->next = search_results;
+  search_results->prev = new;
+
+  if (state->vertical_scroll <= new->start->y &&new->start->y <
+          state->vertical_scroll + state->window_height &&
+      search_results->start->y < state->vertical_scroll) {
+    search_results = new;
+  }
+}
+
+void print_search_results() {
+  SearchResult *cur = search_results;
+  for (; cur->next != search_results; cur = cur->next) {
+    printf("(%d, %d), (%d, %d): %s\n", cur->start->x, cur->start->y,
+           cur->end->x, cur->end->y, SEARCH_BUF + 1);
+  }
+}
+
+void *free_search_results() {
+  if (search_results == NULL) {
+    return NULL;
+  }
+  if (search_results->val != NULL) {
+    free(search_results->val); // NOTE: reused pointer for all search results
+  }
+  SearchResult *cur = search_results;
+  while (cur != search_results) {
+    SearchResult *me = search_results;
+    ((SearchResult *)search_results->prev)->next = NULL;
+    search_results = (SearchResult *)search_results->next;
+    if (me->start != NULL) {
+      free(me->start);
+    }
+    if (me->end != NULL) {
+      free(me->start);
+    }
+    free(me);
+  }
+  return NULL;
+}
 
 void scale_texture_font(Texture **textures, int textures_count, State *state) {
   for (int i = 0; i < textures_count; i += 1) {
@@ -446,11 +517,70 @@ void handle_searchbox(SDL_Renderer *renderer, State *state) {
   SDL_DestroyTexture(search_texture);
 }
 
-// NOTE: code shared with handle_highlight, but too early to abstract anything.
-// Just a note that any changes here might also be needed to be done in
-// handle_highlight.
-// NOTE: there is small delay when pasting after copying from application,
-// might need to investigate in the future
+void handle_search_results(Texture **textures, int textures_count,
+                           State *state) {
+  char *sliding_window = calloc(SEARCH_BUF_OFFSET, sizeof(char));
+
+  int textures_offset = 0;
+  int sliding_window_filled = 0;
+  int char_offset = 0;
+
+  while (textures_offset < textures_count) {
+
+    int texture_char_size =
+        textures[textures_offset]->w / textures[textures_offset]->token->vlen;
+
+    Coord start_coord = {
+        .x = HORIZONTAL_PADDING + textures[textures_offset]->x +
+             state->horizontal_scroll + texture_char_size * char_offset,
+        .y = VERTICAL_PADDING + textures[textures_offset]->y +
+             state->vertical_scroll,
+    };
+    Coord end_coord = {0};
+    end_coord.x = start_coord.x;
+    end_coord.y = start_coord.y;
+
+    // NOTE: fill sliding window
+    while (sliding_window_filled <
+           SEARCH_BUF_OFFSET - 1) { // -1 to account for '/'
+      if (char_offset >= textures[textures_offset]->token->vlen) {
+        textures_offset += 1;
+        char_offset = 0;
+      }
+      if (textures_offset >= textures_count) {
+        break;
+      }
+      memcpy(sliding_window + sliding_window_filled,
+             (textures[textures_offset]->token->v + char_offset), 1);
+      sliding_window_filled += 1;
+      char_offset += 1;
+    }
+
+    if (textures_offset < textures_count) {
+      end_coord.x = HORIZONTAL_PADDING + textures[textures_offset]->x +
+                    state->horizontal_scroll + texture_char_size * char_offset;
+      end_coord.y = VERTICAL_PADDING + textures[textures_offset]->y +
+                    state->vertical_scroll;
+    }
+
+    if (strcmp(SEARCH_BUF + 1, sliding_window) == 0) {
+      add_search_result(&start_coord, &end_coord, state);
+    }
+
+    sliding_window_filled -= 1;
+    memmove(sliding_window, sliding_window + 1, SEARCH_BUF_OFFSET - 2);
+  }
+
+  free(sliding_window);
+
+  printf("HERE_-----------------------------\n");
+  print_search_results();
+}
+
+// NOTE: code shared with handle_highlight, but too early to abstract
+// anything. Just a note that any changes here might also be needed to be done
+// in handle_highlight. NOTE: there is small delay when pasting after copying
+// from application, might need to investigate in the future
 void handle_copy_to_clipboard(Texture **textures, int textures_count,
                               State *state) {
   if (
@@ -1178,7 +1308,14 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_RETURN) {
-      // string_count_search()
+      if (search_results == NULL) {
+        handle_search_results(text_textures, textures_count, state);
+      } else if (search_results != NULL &&
+                 strcmp(SEARCH_BUF + 1, search_results->val) != 0) {
+        search_results = free_search_results();
+        handle_search_results(text_textures, textures_count, state);
+      }
+      // TODO: handle_jump_to_search_result
       // SEARCH END
 
       //
