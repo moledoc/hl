@@ -105,12 +105,15 @@ typedef struct SearchResult {
   struct SearchResult *prev;
   Coord *start;
   Coord *end;
+  int start_texture_idx;
+  int end_texture_idx;
   char *val;
 } SearchResult;
 
 SearchResult *search_results = NULL;
 
-void add_search_result(Coord *start, Coord *end, State *state) {
+void add_search_result(Coord *start, Coord *end, int start_texture_idx,
+                       int end_texture_idx, State *state) {
 
   SearchResult *new = calloc(1, sizeof(SearchResult));
   new->start = calloc(1, sizeof(Coord));
@@ -119,6 +122,8 @@ void add_search_result(Coord *start, Coord *end, State *state) {
   new->start->y = start->y;
   new->end->x = end->x;
   new->end->y = end->y;
+  new->start_texture_idx = start_texture_idx;
+  new->end_texture_idx = end_texture_idx;
 
   if (search_results == NULL) {
     new->val = calloc(SEARCH_BUF_OFFSET, sizeof(char));
@@ -140,6 +145,8 @@ void add_search_result(Coord *start, Coord *end, State *state) {
   new->next = search_results;
   search_results->prev = new;
 
+  // NOTE: set the global variable as current if
+  // current is in view and current global var is not
   if (state->vertical_scroll <= new->start->y &&new->start->y <
           state->vertical_scroll + state->window_height &&
       search_results->start->y < state->vertical_scroll) {
@@ -539,6 +546,7 @@ void handle_search_results(Texture **textures, int textures_count,
     Coord end_coord = {0};
     end_coord.x = start_coord.x;
     end_coord.y = start_coord.y;
+    int start_texture_idx = textures_offset;
 
     // NOTE: fill sliding window
     while (sliding_window_filled <
@@ -564,7 +572,8 @@ void handle_search_results(Texture **textures, int textures_count,
     }
 
     if (strcmp(SEARCH_BUF + 1, sliding_window) == 0) {
-      add_search_result(&start_coord, &end_coord, state);
+      add_search_result(&start_coord, &end_coord, start_texture_idx,
+                        textures_offset, state);
     }
 
     sliding_window_filled -= 1;
@@ -1308,14 +1317,37 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_RETURN) {
+
+      // NOTE: no search yet
       if (search_results == NULL) {
         handle_search_results(text_textures, textures_count, state);
+
+        // NOTE: new search
       } else if (search_results != NULL &&
                  strcmp(SEARCH_BUF + 1, search_results->val) != 0) {
         search_results = free_search_results();
         handle_search_results(text_textures, textures_count, state);
+
+        // NOTE: search didn't change, go to next/prev occurence
+      } else if (search_results != NULL &&
+                 strcmp(SEARCH_BUF + 1, search_results->val) == 0) {
+        if (sdl_event.key.keysym.mod & KMOD_SHIFT) {
+          search_results = search_results->prev;
+        } else {
+          search_results = search_results->next;
+        }
       }
-      // TODO: handle_jump_to_search_result
+
+      // NOTE: set highlight
+      state->highlight_stationary_coord = search_results->start;
+      state->highlight_moving_coord = search_results->end;
+      state->highlight_stationary_texture_idx =
+          search_results->start_texture_idx;
+      state->highlight_moving_texture_idx = search_results->end_texture_idx;
+
+      // NOTE: jump scroll
+      state->vertical_scroll = -search_results->start->y;
+
       // SEARCH END
 
       //
@@ -1521,6 +1553,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     }
     free(state);
   }
+  search_results = free_search_results();
 
   return err;
 }
