@@ -539,9 +539,8 @@ void handle_search_results(Texture **textures, int textures_count,
 
     Coord start_coord = {
         .x = HORIZONTAL_PADDING + textures[textures_offset]->x +
-             state->horizontal_scroll + texture_char_size * char_offset,
-        .y = VERTICAL_PADDING + textures[textures_offset]->y +
-             state->vertical_scroll,
+             texture_char_size * char_offset,
+        .y = VERTICAL_PADDING + textures[textures_offset]->y,
     };
     Coord end_coord = {0};
     end_coord.x = start_coord.x;
@@ -566,9 +565,8 @@ void handle_search_results(Texture **textures, int textures_count,
 
     if (textures_offset < textures_count) {
       end_coord.x = HORIZONTAL_PADDING + textures[textures_offset]->x +
-                    state->horizontal_scroll + texture_char_size * char_offset;
-      end_coord.y = VERTICAL_PADDING + textures[textures_offset]->y +
-                    state->vertical_scroll;
+                    texture_char_size * char_offset;
+      end_coord.y = VERTICAL_PADDING + textures[textures_offset]->y;
     }
 
     if (strcmp(SEARCH_BUF + 1, sliding_window) == 0) {
