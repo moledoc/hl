@@ -572,6 +572,9 @@ void handle_search_results(Texture **textures, int textures_count,
     }
 
     if (strcmp(SEARCH_BUF + 1, sliding_window) == 0) {
+      start_coord.x -=
+          (sliding_window_filled - 1) *
+          texture_char_size; // FIXME: HACK: to fix the highlighting
       add_search_result(&start_coord, &end_coord, start_texture_idx,
                         textures_offset, state);
     }
