@@ -144,14 +144,6 @@ void add_search_result(Coord *start, Coord *end, int start_texture_idx,
   new->prev = cur;
   new->next = search_results;
   search_results->prev = new;
-
-  // NOTE: set the global variable as current if
-  // current is in view and current global var is not
-  if (abs(state->vertical_scroll) <= new->start->y &&new->start->y <
-          abs(state->vertical_scroll) + state->window_height &&
-      search_results->start->y < abs(state->vertical_scroll)) {
-    search_results = new;
-  }
 }
 
 void print_search_results() {
@@ -579,9 +571,6 @@ void handle_search_results(Texture **textures, int textures_count,
   }
 
   free(sliding_window);
-
-  printf("HERE_-----------------------------\n");
-  print_search_results();
 }
 
 // NOTE: code shared with handle_highlight, but too early to abstract
@@ -1326,11 +1315,33 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       if (search_results == NULL) {
         handle_search_results(text_textures, textures_count, state);
 
+        // NOTE: find first search result >= to current vertical scroll
+        {
+          SearchResult *cur = search_results;
+          for (; cur->next != search_results &&
+                 cur->start->y < abs(state->vertical_scroll);
+               cur = cur->next) {
+            ;
+          }
+          search_results = cur;
+        }
+
         // NOTE: new search
       } else if (search_results != NULL &&
                  strcmp(SEARCH_BUF + 1, search_results->val) != 0) {
         search_results = free_search_results();
         handle_search_results(text_textures, textures_count, state);
+
+        // NOTE: find first search result >= to current vertical scroll
+        {
+          SearchResult *cur = search_results;
+          for (; cur->next != search_results &&
+                 cur->start->y < abs(state->vertical_scroll);
+               cur = cur->next) {
+            ;
+          }
+          search_results = cur;
+        }
 
         // NOTE: search didn't change, go to next/prev occurence
       } else if (search_results != NULL &&
@@ -1340,13 +1351,13 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         } else {
           search_results = search_results->next;
         }
+      }
 
-        // NOTE: jump scroll, if search result not in view
-        if (search_results->start->y < abs(state->vertical_scroll) ||
-            abs(state->vertical_scroll) + state->window_height <
-                search_results->start->y) {
-          state->vertical_scroll = -search_results->start->y;
-        }
+      // NOTE: jump scroll, if search result not in view
+      if (search_results->start->y < abs(state->vertical_scroll) ||
+          abs(state->vertical_scroll) + state->window_height <
+              search_results->start->y) {
+        state->vertical_scroll = -search_results->start->y;
       }
 
       // NOTE: set highlight
