@@ -477,8 +477,8 @@ void handle_searchbox(SDL_Renderer *renderer, State *state) {
     return;
   }
 
-  SDL_Surface *search_surface =
-      TTF_RenderUTF8_Solid(state->font, SEARCH_BUF, color_scheme->search_fg);
+  SDL_Surface *search_surface = TTF_RenderUTF8_Solid(
+      state->font, SEARCH_BUF, color_scheme->search_text_fg);
   if (search_surface == NULL) {
     fprintf(stderr, "[WARNING]: failed to create search text surface: %s\n",
             TTF_GetError());
@@ -501,16 +501,28 @@ void handle_searchbox(SDL_Renderer *renderer, State *state) {
   SDL_Color prev = {0};
   SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                          (Uint8 *)&prev.b, (Uint8 *)&prev.a);
-  SDL_SetRenderDrawColor(renderer, color_scheme->search_bg.r,
-                         color_scheme->search_bg.g, color_scheme->search_bg.b,
-                         color_scheme->search_bg.a);
+  // NOTE: search bar
+  SDL_SetRenderDrawColor(renderer, color_scheme->search_box.r,
+                         color_scheme->search_box.g, color_scheme->search_box.b,
+                         color_scheme->search_box.a);
   SDL_Rect clearing_rect = {start_x, start_y, state->window_width,
                             search_surface->h};
   SDL_RenderFillRect(renderer, &clearing_rect);
+
+  // NOTE: search text bg
+  SDL_SetRenderDrawColor(
+      renderer, color_scheme->search_text_bg.r, color_scheme->search_text_bg.g,
+      color_scheme->search_text_bg.b, color_scheme->search_text_bg.a);
+  SDL_Rect rect_text_bg = {start_x, start_y, search_surface->w,
+                           search_surface->h};
+  SDL_RenderFillRect(renderer, &rect_text_bg);
+
   SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
 
-  SDL_Rect rect = {start_x, start_y, search_surface->w, search_surface->h};
-  SDL_RenderCopy(renderer, search_texture, NULL, &rect);
+  // NOTE: search text fg
+  SDL_Rect rect_text_fg = {start_x, start_y, search_surface->w,
+                           search_surface->h};
+  SDL_RenderCopy(renderer, search_texture, NULL, &rect_text_fg);
 
   SDL_FreeSurface(search_surface);
   SDL_DestroyTexture(search_texture);
@@ -534,10 +546,8 @@ void handle_search_results(Texture **textures, int textures_count,
              texture_char_size * char_offset,
         .y = VERTICAL_PADDING + textures[textures_offset]->y,
     };
-    Coord end_coord = {0};
-    end_coord.x = start_coord.x;
-    end_coord.y = start_coord.y;
     int start_texture_idx = textures_offset;
+    Coord end_coord = {0};
 
     // NOTE: fill sliding window
     while (sliding_window_filled <
