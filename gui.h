@@ -41,7 +41,8 @@ int FONT_SIZE = DEFAULT_FONT_SIZE;      // MAYBE: move to state
 int HORIZONTAL_PADDING = (HORIZONTAL_PADDING_BASE);
 int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 
-#define SEARCH_BUF_SIZE 4096
+// TODO: add SEARCH_BUF_SIZE overflow checks
+#define SEARCH_BUF_SIZE (4096)
 char SEARCH_BUF[SEARCH_BUF_SIZE] = {0};
 int SEARCH_BUF_OFFSET = 0;
 
@@ -186,6 +187,12 @@ typedef struct SearchHistory {
 SearchHistory *search_history = NULL;
 
 void add_to_search_history() {
+  // NOTE: if the current search is the most resent in history, don't add it
+  if (search_history != NULL &&
+      strcmp(search_history->val, SEARCH_BUF + 1) == 0) {
+    return;
+  }
+
   SearchHistory *new = calloc(1, sizeof(SearchHistory));
   new->val = calloc(SEARCH_BUF_OFFSET, sizeof(char));
 
@@ -1222,6 +1229,12 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_ESCAPE) {
       state->search_mode = false;
+
+      // NOTE: roll search history back to top
+      for (; search_history != NULL && search_history->prev != NULL;
+           search_history = search_history->prev) {
+        ;
+      }
       // DISABLE SEARCH END
 
       // NAVIGATE SEARCH HISTORY START
@@ -1229,22 +1242,38 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.key.state == SDL_PRESSED &&
                (sdl_event.key.keysym.sym == SDLK_UP ||
                 sdl_event.key.keysym.sym == SDLK_DOWN)) {
+
       SearchHistory *cur = search_history;
       switch (sdl_event.key.keysym.sym) {
       case SDLK_UP:
-        if (cur != NULL) {
-          cur = cur->next;
+        if (SEARCH_BUF_OFFSET <= 1) {
+          ; // NOTE: search buf empty, insert current search_history
+        } else if (search_history != NULL && search_history->next != NULL) {
+          search_history = search_history->next;
+          cur = search_history;
         }
         break;
       case SDLK_DOWN:
-        if (cur != NULL) {
-          cur = cur->prev;
+        if (SEARCH_BUF_OFFSET <= 1) {
+          cur = NULL; // NOTE: search buf empty, keep it empty
+        } else if (search_history != NULL && search_history->prev != NULL) {
+          search_history = search_history->prev;
+          cur = search_history;
+        } else if (search_history != NULL && search_history->prev == NULL) {
+          cur = NULL;
         }
         break;
       }
-      if (cur != NULL) {
+      if (cur == NULL) {
+        memset(SEARCH_BUF + 1, 0,
+               SEARCH_BUF_OFFSET - 1); // NOTE: -1 to account for '/'
+        SEARCH_BUF_OFFSET = 1;         // NOTE: +1 to account for '/'
+      } else {
+        memcpy(SEARCH_BUF + 1, cur->val, strlen(cur->val));
         SEARCH_BUF_OFFSET = strlen(cur->val) + 1; // NOTE: +1 to account for '/'
-        memcpy(SEARCH_BUF + 1, cur->val, SEARCH_BUF_OFFSET - 1);
+        if (SEARCH_BUF_OFFSET < SEARCH_BUF_SIZE) {
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '\0';
+        }
       }
       // NAVIGATE SEARCH HISTORY START
 
