@@ -177,6 +177,43 @@ void *free_search_results() {
   return NULL;
 }
 
+typedef struct SearchHistory {
+  struct SearchHistory *next;
+  struct SearchHistory *prev;
+  char *val;
+} SearchHistory;
+
+SearchHistory *search_history = NULL;
+
+void add_to_search_history() {
+  SearchHistory *new = calloc(1, sizeof(SearchHistory));
+  new->val = calloc(SEARCH_BUF_OFFSET, sizeof(char));
+
+  if (SEARCH_BUF_OFFSET <= 1) {
+    return;
+  }
+
+  memcpy(new->val, SEARCH_BUF + 1,
+         SEARCH_BUF_OFFSET - 1); // NOTE: +1/-1 to account for '/'
+  new->next = search_history;
+  if (search_history != NULL) {
+    search_history->prev = new;
+  }
+  search_history = new;
+}
+
+void *free_search_history() {
+  for (; search_history != NULL;) {
+    if (search_history->val != NULL) {
+      free(search_history->val);
+    }
+    SearchHistory *me = search_history;
+    search_history = search_history->next;
+    free(me);
+  }
+  return NULL;
+}
+
 void scale_texture_font(Texture **textures, int textures_count, State *state) {
   for (int i = 0; i < textures_count; i += 1) {
     textures[i]->x = rint((float)textures[i]->x * state->font_scale_factor);
@@ -1171,12 +1208,12 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_f) {
-      // NOTE: ctrl+shift+f forgets previous search
-      if (sdl_event.key.keysym.mod & KMOD_SHIFT) {
-        search_results = free_search_results();
-        memset(SEARCH_BUF + 1, 0, SEARCH_BUF_OFFSET - 1);
-        SEARCH_BUF_OFFSET = 1;
-      }
+      // // NOTE: ctrl+shift+f forgets previous search
+      // if (sdl_event.key.keysym.mod & KMOD_SHIFT) {
+      search_results = free_search_results();
+      memset(SEARCH_BUF + 1, 0, SEARCH_BUF_OFFSET - 1);
+      SEARCH_BUF_OFFSET = 1;
+      // }
       state->search_mode = true;
       // ENABLE SEARCH END
 
@@ -1186,6 +1223,30 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.key.keysym.sym == SDLK_ESCAPE) {
       state->search_mode = false;
       // DISABLE SEARCH END
+
+      // NAVIGATE SEARCH HISTORY START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               (sdl_event.key.keysym.sym == SDLK_UP ||
+                sdl_event.key.keysym.sym == SDLK_DOWN)) {
+      SearchHistory *cur = search_history;
+      switch (sdl_event.key.keysym.sym) {
+      case SDLK_UP:
+        if (cur != NULL) {
+          cur = cur->next;
+        }
+        break;
+      case SDLK_DOWN:
+        if (cur != NULL) {
+          cur = cur->prev;
+        }
+        break;
+      }
+      if (cur != NULL) {
+        SEARCH_BUF_OFFSET = strlen(cur->val) + 1; // NOTE: +1 to account for '/'
+        memcpy(SEARCH_BUF + 1, cur->val, SEARCH_BUF_OFFSET - 1);
+      }
+      // NAVIGATE SEARCH HISTORY START
 
       // PASTE TO SEARCH START
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
@@ -1331,7 +1392,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         // NOTE: find first search result >= to current vertical scroll
         {
           SearchResult *cur = search_results;
-          for (; cur->next != search_results &&
+          for (; cur != NULL && cur->next != search_results &&
                  cur->start->y < abs(state->vertical_scroll);
                cur = cur->next) {
             ;
@@ -1348,7 +1409,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         // NOTE: find first search result >= to current vertical scroll
         {
           SearchResult *cur = search_results;
-          for (; cur->next != search_results &&
+          for (; cur != NULL && cur->next != search_results &&
                  cur->start->y < abs(state->vertical_scroll);
                cur = cur->next) {
             ;
@@ -1366,19 +1427,23 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         }
       }
 
-      // NOTE: jump scroll, if search result not in view
-      if (search_results->start->y < abs(state->vertical_scroll) ||
-          abs(state->vertical_scroll) + state->window_height <
-              search_results->start->y) {
-        state->vertical_scroll = -search_results->start->y;
+      if (search_results != NULL) {
+        // NOTE: jump scroll, if search result not in view
+        if (search_results->start->y < abs(state->vertical_scroll) ||
+            abs(state->vertical_scroll) + state->window_height <
+                search_results->start->y) {
+          state->vertical_scroll = -search_results->start->y;
+        }
+
+        // NOTE: set highlight
+        state->highlight_stationary_coord = search_results->start;
+        state->highlight_moving_coord = search_results->end;
+        state->highlight_stationary_texture_idx =
+            search_results->start_texture_idx;
+        state->highlight_moving_texture_idx = search_results->end_texture_idx;
       }
 
-      // NOTE: set highlight
-      state->highlight_stationary_coord = search_results->start;
-      state->highlight_moving_coord = search_results->end;
-      state->highlight_stationary_texture_idx =
-          search_results->start_texture_idx;
-      state->highlight_moving_texture_idx = search_results->end_texture_idx;
+      add_to_search_history();
 
       // SEARCH END
 
@@ -1586,6 +1651,6 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     free(state);
   }
   search_results = free_search_results();
-
+  search_history = free_search_history();
   return err;
 }
