@@ -210,6 +210,12 @@ void add_to_search_history() {
 }
 
 void *free_search_history() {
+  // NOTE: roll history to the top
+  for (; search_history != NULL && search_history->prev != NULL;
+       search_history = search_history->prev) {
+    ;
+  }
+
   for (; search_history != NULL;) {
     if (search_history->val != NULL) {
       free(search_history->val);
