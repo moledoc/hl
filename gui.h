@@ -1494,6 +1494,45 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
 
       // SEARCH END
 
+      // JUMP HALF PAGE DOWN START
+    } else if (sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_d &&
+               sdl_event.key.keysym.mod & KMOD_CTRL) {
+      state->vertical_scroll =
+          clamp(state->vertical_scroll - state->window_height / 2,
+                -state->max_vertical_offset, 0);
+      // JUMP HALF PAGE DOWN END
+
+      // JUMP HALF PAGE UP START
+    } else if (sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_u &&
+               sdl_event.key.keysym.mod & KMOD_CTRL) {
+
+      state->vertical_scroll =
+          clamp(state->vertical_scroll + state->window_height / 2,
+                -state->max_vertical_offset, 0);
+      // JUMP HALF PAGE UP END
+
+      // JUMP TO BEGINNING START
+    } else if (sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_a &&
+               sdl_event.key.keysym.mod & KMOD_CTRL) {
+
+      state->vertical_scroll = 0;
+      // JUMP TO BEGINNING END
+
+      // JUMP TO END START
+    } else if (sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_e &&
+               sdl_event.key.keysym.mod & KMOD_CTRL) {
+
+      state->vertical_scroll = -state->max_vertical_offset;
+      // JUMP TO END END
+
       //
     }
 

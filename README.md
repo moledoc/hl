@@ -64,7 +64,7 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- [x] gruvbox-dark
 		- [x] solarized-light
 		- [x] solarized-dark
-	- [ ] soft-wrap text
+	- [ ] ~~soft-wrap text~~
 	- [x] row and col numbers
 		- MAYBE: `jump to <path>:<line>:<col>` support
 	- [x] text search
@@ -82,7 +82,9 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- [ ] on the fly
 	- [ ] some acme-inspired mouse actions
 		- TBD
-	- [ ] some vim-inspired keyboard shortcuts for navigation
+	- [ ] some keyboard shortcuts for navigation
+		- [x] ctrl+d/ctrl+u = jump half a page down/up (vim inspired)
+		- [x] ctrl+a/ctrl+e = jump to beginning/end of file
 		- TBD
 	- [ ] MAYBE: MAYBE: lsp integration
 	- [ ] MAYBE: possible performance optimization
