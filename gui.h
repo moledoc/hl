@@ -1329,10 +1329,10 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
            sdl_event.key.keysym.sym == '\'' ||
            sdl_event.key.keysym.sym == '\\' ||
            sdl_event.key.keysym.sym == ',' || sdl_event.key.keysym.sym == '.' ||
-           sdl_event.key.keysym.sym == '/' || sdl_event.key.keysym.sym == ' ' ||
-           sdl_event.key.keysym.sym == '\t' ||
-           sdl_event.key.keysym.sym == '\n') &&
-          !(sdl_event.key.keysym.mod & KMOD_SHIFT)) {
+           sdl_event.key.keysym.sym == '/' ||
+           sdl_event.key.keysym.sym == ' ') &&
+          !(sdl_event.key.keysym.mod &
+            KMOD_SHIFT)) { // TODO: handle tab and newline properly
         SEARCH_BUF[SEARCH_BUF_OFFSET] = sdl_event.key.keysym.sym;
         SEARCH_BUF_OFFSET += 1;
       }
@@ -1344,8 +1344,10 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
            sdl_event.key.keysym.sym == '\'' ||
            sdl_event.key.keysym.sym == '\\' ||
            sdl_event.key.keysym.sym == ',' || sdl_event.key.keysym.sym == '.' ||
-           sdl_event.key.keysym.sym == '/') &&
-          sdl_event.key.keysym.mod & KMOD_SHIFT) {
+           sdl_event.key.keysym.sym == '/' ||
+           sdl_event.key.keysym.sym == ' ') &&
+          sdl_event.key.keysym.mod &
+              KMOD_SHIFT) { // TODO: handle tab and newline properly
         switch (sdl_event.key.keysym.sym) {
         case '1':
           SEARCH_BUF[SEARCH_BUF_OFFSET] = '!';
@@ -1410,6 +1412,9 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         case '/':
           SEARCH_BUF[SEARCH_BUF_OFFSET] = '?';
           break;
+        default:
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = sdl_event.key.keysym.sym;
+          break;
         }
         SEARCH_BUF_OFFSET += 1;
       }
@@ -1418,7 +1423,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       // SEARCH START
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
-               sdl_event.key.keysym.sym == SDLK_RETURN) {
+               sdl_event.key.keysym.sym == SDLK_RETURN &&
+               SEARCH_BUF_OFFSET > 1) {
 
       // NOTE: no search yet
       if (search_results == NULL) {
