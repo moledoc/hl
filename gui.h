@@ -43,9 +43,15 @@ int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 
 // TODO: add SEARCH_BUF_SIZE overflow checks NOTE: might already be done
 // TODO: handle case when search text doesn't fit in the window
-#define SEARCH_BUF_SIZE (4096)
+#define SEARCH_BUF_SIZE (4096 + 1)
 char SEARCH_BUF[SEARCH_BUF_SIZE] = {0};
 int SEARCH_BUF_OFFSET = 0;
+
+// TODO: add GOTO_LINE_SIZE overflow checks NOTE: might already be done
+// TODO: handle case when search text doesn't fit in the window
+#define GOTO_LINE_BUF_SIZE (100 + 1)
+char GOTO_LINE_BUF[GOTO_LINE_BUF_SIZE] = {0};
+int GOTO_LINE_BUF_OFFSET = 0;
 
 typedef struct {
   struct SDL_Texture *texture;
@@ -100,6 +106,8 @@ typedef struct {
   int rows_count;
   //
   bool search_mode;
+  //
+  bool goto_line_mode;
 } State;
 
 typedef struct SearchResult {
@@ -522,14 +530,15 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
   SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
 }
 
-void handle_searchbox(SDL_Renderer *renderer, State *state) {
+void handle_searchbox(SDL_Renderer *renderer, State *state, bool handle,
+                      char *buf) {
 
-  if (!state->search_mode) {
+  if (!handle) {
     return;
   }
 
-  SDL_Surface *search_surface = TTF_RenderUTF8_Solid(
-      state->font, SEARCH_BUF, color_scheme->search_text_fg);
+  SDL_Surface *search_surface =
+      TTF_RenderUTF8_Solid(state->font, buf, color_scheme->search_text_fg);
   if (search_surface == NULL) {
     fprintf(stderr, "[WARNING]: failed to create search text surface: %s\n",
             TTF_GetError());
@@ -990,7 +999,8 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   }
 
   // handle search
-  handle_searchbox(renderer, state);
+  handle_searchbox(renderer, state, state->search_mode, SEARCH_BUF);
+  handle_searchbox(renderer, state, state->goto_line_mode, GOTO_LINE_BUF);
 
   return EXIT_SUCCESS;
 }
@@ -1307,7 +1317,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       }
       // PASTE TO SEARCH START
 
-      // SEARCH TYPE START
+      // SEARCH TYPING START
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym != SDLK_RETURN &&
@@ -1424,7 +1434,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         }
         SEARCH_BUF_OFFSET += 1;
       }
-      // SEARCH TYPE END
+      // SEARCH TYPING END
 
       // SEARCH START
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
@@ -1533,6 +1543,54 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->vertical_scroll = -state->max_vertical_offset;
       // JUMP TO END END
 
+      // ENABLE GOTO_LINE START
+    } else if (!state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_g &&
+               (sdl_event.key.keysym.mod & KMOD_CTRL)) {
+      memset(GOTO_LINE_BUF + 1, 0, GOTO_LINE_BUF_OFFSET - 1);
+      GOTO_LINE_BUF_OFFSET = 1;
+      state->goto_line_mode = true;
+      // ENABLE GOTO_LINE END
+
+      // DISABLE GOTO_LINE START
+    } else if (state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_ESCAPE) {
+      state->goto_line_mode = false;
+      // DISABLE GOTO_LINE END
+
+      // GOTO_LINE TYPING START
+    } else if (state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym != SDLK_RETURN) {
+      if (sdl_event.key.keysym.sym == SDLK_BACKSPACE) {
+        if (GOTO_LINE_BUF_OFFSET > 1) {
+          GOTO_LINE_BUF_OFFSET -= 1;
+        }
+        GOTO_LINE_BUF[GOTO_LINE_BUF_OFFSET] = '\0';
+      }
+      if ('0' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= '9' &&
+          GOTO_LINE_BUF_OFFSET < GOTO_LINE_BUF_SIZE - 1) {
+        GOTO_LINE_BUF[GOTO_LINE_BUF_OFFSET] = sdl_event.key.keysym.sym;
+        GOTO_LINE_BUF_OFFSET += 1;
+      }
+      // GOTO_LINE TYPING END
+
+      // GOTO_LINE START
+    } else if (state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_RETURN &&
+               GOTO_LINE_BUF_OFFSET > 1) {
+      int idx = atoi(GOTO_LINE_BUF + 1) - 1;
+      memset(GOTO_LINE_BUF + 1, 0, GOTO_LINE_BUF_OFFSET - 1);
+      GOTO_LINE_BUF_OFFSET = 1;
+      if (0 <= idx && idx < state->rows_count) {
+        state->vertical_scroll = -state->row_nr_textures[idx]->y;
+      }
+      state->goto_line_mode = false;
+      // GOTO_LINE END
+
       //
     }
 
@@ -1608,6 +1666,9 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   SEARCH_BUF[SEARCH_BUF_OFFSET] = '/';
   SEARCH_BUF_OFFSET += 1;
+
+  GOTO_LINE_BUF[GOTO_LINE_BUF_OFFSET] = ':';
+  GOTO_LINE_BUF_OFFSET += 1;
 
   int textures_count = 0;
   Texture **text_textures = tokens_to_textures(

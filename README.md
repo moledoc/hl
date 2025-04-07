@@ -66,6 +66,7 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- [x] solarized-dark
 	- [ ] ~~soft-wrap text~~
 	- [x] row and col numbers
+		- [x] goto line nr
 		- MAYBE: `jump to <path>:<line>:<col>` support
 	- [x] text search
 	- [ ] display cursor
