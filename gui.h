@@ -41,6 +41,12 @@ int FONT_SIZE = DEFAULT_FONT_SIZE;      // MAYBE: move to state
 int HORIZONTAL_PADDING = (HORIZONTAL_PADDING_BASE);
 int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 
+// TODO: add SEARCH_BUF_SIZE overflow checks NOTE: might already be done
+// TODO: handle case when search text doesn't fit in the window
+#define SEARCH_BUF_SIZE (4096)
+char SEARCH_BUF[SEARCH_BUF_SIZE] = {0};
+int SEARCH_BUF_OFFSET = 0;
+
 typedef struct {
   struct SDL_Texture *texture;
   Token *token;
@@ -61,6 +67,8 @@ typedef struct {
   int window_width;
   int window_height;
   //
+  TTF_Font *font;
+  //
   SDL_Texture *clearing;
   //
   bool keep_window_open;
@@ -71,8 +79,8 @@ typedef struct {
   float font_scale_factor;
   Uint64 font_size_unchanged_since;
   //
-  bool ctrl_pressed;
-  bool shift_pressed;
+  bool ctrl_pressed;  // TODO: use sdl_event.key.keysym.mod == KMOD_CTRL
+  bool shift_pressed; // TODO: use sdl_event.key.keysym.mod == KMOD_SHIFT
   bool left_mouse_button_pressed;
   //
   int max_horizontal_offset;
@@ -90,7 +98,135 @@ typedef struct {
   //
   Texture **row_nr_textures;
   int rows_count;
+  //
+  bool search_mode;
 } State;
+
+typedef struct SearchResult {
+  struct SearchResult *next;
+  struct SearchResult *prev;
+  Coord *start;
+  Coord *end;
+  int start_texture_idx;
+  int end_texture_idx;
+  char *val;
+} SearchResult;
+
+SearchResult *search_results = NULL;
+
+void add_search_result(Coord *start, Coord *end, int start_texture_idx,
+                       int end_texture_idx, State *state) {
+
+  SearchResult *new = calloc(1, sizeof(SearchResult));
+  new->start = calloc(1, sizeof(Coord));
+  new->end = calloc(1, sizeof(Coord));
+  new->start->x = start->x;
+  new->start->y = start->y;
+  new->end->x = end->x;
+  new->end->y = end->y;
+  new->start_texture_idx = start_texture_idx;
+  new->end_texture_idx = end_texture_idx;
+
+  if (search_results == NULL) {
+    new->val = calloc(SEARCH_BUF_OFFSET, sizeof(char));
+    memcpy(new->val, SEARCH_BUF + 1, SEARCH_BUF_OFFSET - 1);
+    new->next = new;
+    new->prev = new;
+    search_results = new;
+    return;
+  }
+  new->val = search_results->val; // NOTE: reuse str pointer; is slightly
+                                  // dangerous, but lets see how badly it goes
+
+  SearchResult *cur = search_results;
+  for (; cur->next != search_results; cur = cur->next) {
+    ;
+  }
+  cur->next = new;
+  new->prev = cur;
+  new->next = search_results;
+  search_results->prev = new;
+}
+
+void print_search_results() {
+  SearchResult *cur = search_results;
+  for (; cur->next != search_results; cur = cur->next) {
+    printf("(%d, %d), (%d, %d): %s\n", cur->start->x, cur->start->y,
+           cur->end->x, cur->end->y, SEARCH_BUF + 1);
+  }
+}
+
+void *free_search_results() {
+  if (search_results == NULL) {
+    return NULL;
+  }
+  if (search_results->val != NULL) {
+    free(search_results->val); // NOTE: reused pointer for all search results
+  }
+  SearchResult *cur = search_results;
+  while (cur != search_results) {
+    SearchResult *me = search_results;
+    ((SearchResult *)search_results->prev)->next = NULL;
+    search_results = (SearchResult *)search_results->next;
+    if (me->start != NULL) {
+      free(me->start);
+    }
+    if (me->end != NULL) {
+      free(me->start);
+    }
+    free(me);
+  }
+  return NULL;
+}
+
+typedef struct SearchHistory {
+  struct SearchHistory *next;
+  struct SearchHistory *prev;
+  char *val;
+} SearchHistory;
+
+SearchHistory *search_history = NULL;
+
+void add_to_search_history() {
+  // NOTE: if the current search is the most resent in history, don't add it
+  if (search_history != NULL &&
+      strcmp(search_history->val, SEARCH_BUF + 1) == 0) {
+    return;
+  }
+
+  SearchHistory *new = calloc(1, sizeof(SearchHistory));
+  new->val = calloc(SEARCH_BUF_OFFSET, sizeof(char));
+
+  if (SEARCH_BUF_OFFSET <= 1) {
+    return;
+  }
+
+  memcpy(new->val, SEARCH_BUF + 1,
+         SEARCH_BUF_OFFSET - 1); // NOTE: +1/-1 to account for '/'
+  new->next = search_history;
+  if (search_history != NULL) {
+    search_history->prev = new;
+  }
+  search_history = new;
+}
+
+void *free_search_history() {
+  // NOTE: roll history to the top
+  for (; search_history != NULL && search_history->prev != NULL;
+       search_history = search_history->prev) {
+    ;
+  }
+
+  for (; search_history != NULL;) {
+    if (search_history->val != NULL) {
+      free(search_history->val);
+    }
+    SearchHistory *me = search_history;
+    search_history = search_history->next;
+    free(me);
+  }
+  return NULL;
+}
 
 void scale_texture_font(Texture **textures, int textures_count, State *state) {
   for (int i = 0; i < textures_count; i += 1) {
@@ -386,11 +522,133 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
   SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
 }
 
-// NOTE: code shared with handle_highlight, but too early to abstract anything.
-// Just a note that any changes here might also be needed to be done in
-// handle_highlight.
-// NOTE: there is small delay when pasting after copying from application,
-// might need to investigate in the future
+void handle_searchbox(SDL_Renderer *renderer, State *state) {
+
+  if (!state->search_mode) {
+    return;
+  }
+
+  SDL_Surface *search_surface = TTF_RenderUTF8_Solid(
+      state->font, SEARCH_BUF, color_scheme->search_text_fg);
+  if (search_surface == NULL) {
+    fprintf(stderr, "[WARNING]: failed to create search text surface: %s\n",
+            TTF_GetError());
+    return;
+  }
+
+  SDL_Texture *search_texture =
+      SDL_CreateTextureFromSurface(renderer, search_surface);
+
+  if (search_texture == NULL) {
+    fprintf(stderr, "failed to create search text texture: %s\n",
+            SDL_GetError());
+    SDL_FreeSurface(search_surface);
+    return;
+  }
+
+  int start_x = 0;
+  int start_y = state->window_height - search_surface->h;
+
+  SDL_Color prev = {0};
+  SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
+                         (Uint8 *)&prev.b, (Uint8 *)&prev.a);
+  // NOTE: search bar
+  SDL_SetRenderDrawColor(renderer, color_scheme->search_box.r,
+                         color_scheme->search_box.g, color_scheme->search_box.b,
+                         color_scheme->search_box.a);
+  SDL_Rect clearing_rect = {start_x, start_y, state->window_width,
+                            search_surface->h};
+  SDL_RenderFillRect(renderer, &clearing_rect);
+
+  // NOTE: search text bg
+  SDL_SetRenderDrawColor(
+      renderer, color_scheme->search_text_bg.r, color_scheme->search_text_bg.g,
+      color_scheme->search_text_bg.b, color_scheme->search_text_bg.a);
+  SDL_Rect rect_text_bg = {start_x, start_y, search_surface->w,
+                           search_surface->h};
+  SDL_RenderFillRect(renderer, &rect_text_bg);
+
+  SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
+
+  // NOTE: search text fg
+  SDL_Rect rect_text_fg = {start_x, start_y, search_surface->w,
+                           search_surface->h};
+  SDL_RenderCopy(renderer, search_texture, NULL, &rect_text_fg);
+
+  SDL_FreeSurface(search_surface);
+  SDL_DestroyTexture(search_texture);
+}
+
+void handle_search_results(Texture **textures, int textures_count,
+                           State *state) {
+
+  char *sliding_window = calloc(SEARCH_BUF_OFFSET, sizeof(char));
+  int sliding_window_filled = 0;
+
+  int textures_offset_start = 0;
+  int char_offset_start = 0;
+
+  int textures_offset_end = 0;
+  int char_offset_end = 0;
+
+  Coord start_coord = {0};
+  Coord end_coord = {0};
+
+  while (textures_offset_start < textures_count) {
+
+    int texture_char_size = textures[textures_offset_start]->w /
+                            textures[textures_offset_start]->token->vlen;
+
+    start_coord.x = HORIZONTAL_PADDING + textures[textures_offset_start]->x +
+                    texture_char_size * char_offset_start;
+    start_coord.y = VERTICAL_PADDING + textures[textures_offset_start]->y;
+
+    // NOTE: fill sliding window
+    while (sliding_window_filled <
+           SEARCH_BUF_OFFSET - 1) { // -1 to account for '/'
+      if (char_offset_end >= textures[textures_offset_end]->token->vlen) {
+        textures_offset_end += 1;
+        if (textures_offset_end >= textures_count) {
+          free(sliding_window);
+          return;
+        }
+        char_offset_end = 0;
+      }
+      memcpy(sliding_window + sliding_window_filled,
+             (textures[textures_offset_end]->token->v + char_offset_end), 1);
+      sliding_window_filled += 1;
+      char_offset_end += 1;
+    }
+
+    if (strcmp(SEARCH_BUF + 1, sliding_window) == 0) {
+      end_coord.x = HORIZONTAL_PADDING + textures[textures_offset_end]->x +
+                    texture_char_size * char_offset_end;
+      end_coord.y = VERTICAL_PADDING + textures[textures_offset_end]->y;
+      add_search_result(&start_coord, &end_coord, textures_offset_start,
+                        textures_offset_end, state);
+    }
+
+    sliding_window_filled -= 1;
+    memmove(sliding_window, sliding_window + 1, SEARCH_BUF_OFFSET - 2);
+
+    char_offset_start += 1;
+    if (char_offset_start >= textures[textures_offset_start]->token->vlen) {
+      textures_offset_start += 1;
+      if (textures_offset_start >= textures_count) {
+        free(sliding_window);
+        return;
+      }
+      char_offset_start = 0;
+    }
+  }
+
+  free(sliding_window);
+}
+
+// NOTE: code shared with handle_highlight, but too early to abstract
+// anything. Just a note that any changes here might also be needed to be done
+// in handle_highlight. NOTE: there is small delay when pasting after copying
+// from application, might need to investigate in the future
 void handle_copy_to_clipboard(Texture **textures, int textures_count,
                               State *state) {
   if (
@@ -467,8 +725,8 @@ void handle_copy_to_clipboard(Texture **textures, int textures_count,
 }
 
 // allocs memory
-void row_nrs_to_textures(SDL_Renderer *renderer, TTF_Font *font, int font_size,
-                         int rows, State *state) {
+void row_nrs_to_textures(SDL_Renderer *renderer, int font_size, int rows,
+                         State *state) {
   Texture **textures = calloc(rows, sizeof(Texture *));
 
   SDL_Color color = color_scheme->numbers;
@@ -480,7 +738,7 @@ void row_nrs_to_textures(SDL_Renderer *renderer, TTF_Font *font, int font_size,
   for (int i = 0; i < rows; i += 1) {
 
     snprintf(buf, sizeof(buf), "%d", i + 1);
-    SDL_Surface *row_nr_surface = TTF_RenderUTF8_Solid(font, buf, color);
+    SDL_Surface *row_nr_surface = TTF_RenderUTF8_Solid(state->font, buf, color);
     if (row_nr_surface == NULL) {
       fprintf(stderr, "failed to create row nr surface: %s\n", TTF_GetError());
       return;
@@ -524,8 +782,8 @@ void row_nrs_to_textures(SDL_Renderer *renderer, TTF_Font *font, int font_size,
 }
 
 // allocs memory
-Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
-                             int font_size, Token **tokens, int tokens_count,
+Texture **tokens_to_textures(SDL_Renderer *renderer, int font_size,
+                             Token **tokens, int tokens_count,
                              int *textures_count, State *state) {
   Texture **textures = calloc(tokens_count, sizeof(Texture *));
 
@@ -556,7 +814,7 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     }
 
     SDL_Surface *text_surface =
-        TTF_RenderUTF8_Solid(font, tokens[i]->v, text_color);
+        TTF_RenderUTF8_Solid(state->font, tokens[i]->v, text_color);
     if (text_surface == NULL) {
       fprintf(stderr, "failed to create text surface: %s\n", TTF_GetError());
       return NULL;
@@ -617,7 +875,7 @@ Texture **tokens_to_textures(SDL_Renderer *renderer, TTF_Font *font,
     state->horizontal_scroll = 0;
   }
 
-  row_nrs_to_textures(renderer, font, font_size, row, state);
+  row_nrs_to_textures(renderer, font_size, row, state);
   if (row - 1 >= 0) {
     ROW_NUMBER_WIDTH = state->row_nr_textures[row - 1]->w + ROW_NUMBER_PADDING;
     HORIZONTAL_PADDING = HORIZONTAL_PADDING_BASE + ROW_NUMBER_WIDTH;
@@ -650,12 +908,12 @@ void update_clearing_texture(SDL_Renderer *renderer, State *state) {
 // and creates new textures from tokens
 // frees and allocs memory
 Texture **update_textures(Texture **textures, SDL_Renderer *renderer,
-                          TTF_Font *font, int font_size, Token **tokens,
-                          int tokens_count, int *textures_count, State *state) {
+                          int font_size, Token **tokens, int tokens_count,
+                          int *textures_count, State *state) {
   free_textures(textures, *textures_count);
   free_textures(state->row_nr_textures, state->rows_count);
   *textures_count = 0;
-  return tokens_to_textures(renderer, font, FONT_SIZE, tokens, tokens_count,
+  return tokens_to_textures(renderer, FONT_SIZE, tokens, tokens_count,
                             textures_count, state);
 }
 
@@ -731,13 +989,15 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
                    &row_nr_rect);
   }
 
+  // handle search
+  handle_searchbox(renderer, state);
+
   return EXIT_SUCCESS;
 }
 
 int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
-                      SDL_Renderer *renderer, TTF_Font *font,
-                      Texture **text_textures, int textures_count,
-                      State *state) {
+                      SDL_Renderer *renderer, Texture **text_textures,
+                      int textures_count, State *state) {
 
   int event_count = 0;
   int err = 0;
@@ -875,7 +1135,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
 
       FONT_SIZE += FONT_INCREMENT * sign(sdl_event.wheel.y);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
-      TTF_SetFontSize(font, FONT_SIZE);
+      TTF_SetFontSize(state->font, FONT_SIZE);
 
       state->is_font_resized = true;
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
@@ -905,7 +1165,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       FONT_SIZE += FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_EQUALS) -
                    FONT_INCREMENT * (sdl_event.key.keysym.sym == SDLK_MINUS);
       FONT_SIZE = clamp(FONT_SIZE, FONT_LOWER_BOUND, FONT_UPPER_BOUND);
-      TTF_SetFontSize(font, FONT_SIZE);
+      TTF_SetFontSize(state->font, FONT_SIZE);
 
       state->is_font_resized = true;
       state->font_scale_factor = (float)FONT_SIZE / (float)BASE_FONT_SIZE;
@@ -928,7 +1188,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
 
       if (FONT_SIZE != DEFAULT_FONT_SIZE) {
         FONT_SIZE = DEFAULT_FONT_SIZE;
-        TTF_SetFontSize(font, DEFAULT_FONT_SIZE);
+        TTF_SetFontSize(state->font, DEFAULT_FONT_SIZE);
         state->is_font_resized = true;
         // NOTE: + FONT_RENDERING_DELAY because we want to render right away
         state->font_size_unchanged_since =
@@ -964,6 +1224,277 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                              color_scheme->bg.b, color_scheme->bg.a);
       state->color_scheme_modified = true;
       // NEXT COLORSCHEME END
+
+      // ENABLE SEARCH START
+    } else if (!state->search_mode && state->ctrl_pressed &&
+               sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_f) {
+      search_results = free_search_results();
+      memset(SEARCH_BUF + 1, 0, SEARCH_BUF_OFFSET - 1);
+      SEARCH_BUF_OFFSET = 1;
+      state->search_mode = true;
+      // ENABLE SEARCH END
+
+      // DISABLE SEARCH START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_ESCAPE) {
+      state->search_mode = false;
+
+      // NOTE: roll search history back to top
+      for (; search_history != NULL && search_history->prev != NULL;
+           search_history = search_history->prev) {
+        ;
+      }
+      // DISABLE SEARCH END
+
+      // NAVIGATE SEARCH HISTORY START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               (sdl_event.key.keysym.sym == SDLK_UP ||
+                sdl_event.key.keysym.sym == SDLK_DOWN)) {
+
+      SearchHistory *cur = search_history;
+      switch (sdl_event.key.keysym.sym) {
+      case SDLK_UP:
+        if (SEARCH_BUF_OFFSET <= 1) {
+          ; // NOTE: search buf empty, insert current search_history
+        } else if (search_history != NULL && search_history->next != NULL) {
+          search_history = search_history->next;
+          cur = search_history;
+        }
+        break;
+      case SDLK_DOWN:
+        if (SEARCH_BUF_OFFSET <= 1) {
+          cur = NULL; // NOTE: search buf empty, keep it empty
+        } else if (search_history != NULL && search_history->prev != NULL) {
+          search_history = search_history->prev;
+          cur = search_history;
+        } else if (search_history != NULL && search_history->prev == NULL) {
+          cur = NULL;
+        }
+        break;
+      }
+      if (cur == NULL) {
+        memset(SEARCH_BUF + 1, 0,
+               SEARCH_BUF_OFFSET - 1); // NOTE: -1 to account for '/'
+        SEARCH_BUF_OFFSET = 1;         // NOTE: +1 to account for '/'
+      } else {
+        memcpy(SEARCH_BUF + 1, cur->val, strlen(cur->val));
+        SEARCH_BUF_OFFSET = strlen(cur->val) + 1; // NOTE: +1 to account for '/'
+        if (SEARCH_BUF_OFFSET < SEARCH_BUF_SIZE) {
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '\0';
+        }
+      }
+      // NAVIGATE SEARCH HISTORY START
+
+      // PASTE TO SEARCH START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_v &&
+               sdl_event.key.keysym.mod & KMOD_CTRL) {
+      char *clipboard = SDL_GetClipboardText();
+      int clipboard_len = strlen(clipboard);
+      if (clipboard_len + SEARCH_BUF_OFFSET < SEARCH_BUF_SIZE) {
+        memcpy(SEARCH_BUF + SEARCH_BUF_OFFSET, clipboard, clipboard_len);
+        SEARCH_BUF_OFFSET += clipboard_len;
+      } else {
+        fprintf(stdout,
+                "[WARNING]: search text length (%d) exceeding search buffer "
+                "size (%d)\n",
+                clipboard_len + SEARCH_BUF_OFFSET, SEARCH_BUF_SIZE);
+      }
+      // PASTE TO SEARCH START
+
+      // SEARCH TYPE START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym != SDLK_RETURN &&
+               SEARCH_BUF_OFFSET + 1 < SEARCH_BUF_SIZE) {
+      if (sdl_event.key.keysym.sym == SDLK_BACKSPACE) {
+        if (SEARCH_BUF_OFFSET > 1) {
+          SEARCH_BUF_OFFSET -= 1;
+        }
+        SEARCH_BUF[SEARCH_BUF_OFFSET] = '\0';
+      }
+
+      if ('a' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= 'z') {
+        char c = sdl_event.key.keysym.sym;
+        if (sdl_event.key.keysym.mod & KMOD_SHIFT) {
+          c = c - 'a' + 'A';
+        }
+        SEARCH_BUF[SEARCH_BUF_OFFSET] = c;
+        SEARCH_BUF_OFFSET += 1;
+      }
+
+      if (('0' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= '9' ||
+           sdl_event.key.keysym.sym == '`' || sdl_event.key.keysym.sym == '-' ||
+           sdl_event.key.keysym.sym == '=' || sdl_event.key.keysym.sym == '[' ||
+           sdl_event.key.keysym.sym == ']' || sdl_event.key.keysym.sym == ';' ||
+           sdl_event.key.keysym.sym == '\'' ||
+           sdl_event.key.keysym.sym == '\\' ||
+           sdl_event.key.keysym.sym == ',' || sdl_event.key.keysym.sym == '.' ||
+           sdl_event.key.keysym.sym == '/' ||
+           sdl_event.key.keysym.sym == ' ') &&
+          !(sdl_event.key.keysym.mod &
+            KMOD_SHIFT)) { // TODO: handle tab and newline properly
+        SEARCH_BUF[SEARCH_BUF_OFFSET] = sdl_event.key.keysym.sym;
+        SEARCH_BUF_OFFSET += 1;
+      }
+
+      if (('0' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= '9' ||
+           sdl_event.key.keysym.sym == '`' || sdl_event.key.keysym.sym == '-' ||
+           sdl_event.key.keysym.sym == '=' || sdl_event.key.keysym.sym == '[' ||
+           sdl_event.key.keysym.sym == ']' || sdl_event.key.keysym.sym == ';' ||
+           sdl_event.key.keysym.sym == '\'' ||
+           sdl_event.key.keysym.sym == '\\' ||
+           sdl_event.key.keysym.sym == ',' || sdl_event.key.keysym.sym == '.' ||
+           sdl_event.key.keysym.sym == '/' ||
+           sdl_event.key.keysym.sym == ' ') &&
+          sdl_event.key.keysym.mod &
+              KMOD_SHIFT) { // TODO: handle tab and newline properly
+        switch (sdl_event.key.keysym.sym) {
+        case '1':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '!';
+          break;
+        case '2':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '@';
+          break;
+        case '3':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '#';
+          break;
+        case '4':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '$';
+          break;
+        case '5':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '%';
+          break;
+        case '6':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '^';
+          break;
+        case '7':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '&';
+          break;
+        case '8':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '*';
+          break;
+        case '9':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '(';
+          break;
+        case '0':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = ')';
+          break;
+        case '`':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '~';
+          break;
+        case '-':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '_';
+          break;
+        case '=':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '+';
+          break;
+        case '[':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '{';
+          break;
+        case ']':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '}';
+          break;
+        case ';':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = ':';
+          break;
+        case '\'':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '"';
+          break;
+        case '\\':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '|';
+          break;
+        case ',':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '<';
+          break;
+        case '.':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '>';
+          break;
+        case '/':
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = '?';
+          break;
+        default:
+          SEARCH_BUF[SEARCH_BUF_OFFSET] = sdl_event.key.keysym.sym;
+          break;
+        }
+        SEARCH_BUF_OFFSET += 1;
+      }
+      // SEARCH TYPE END
+
+      // SEARCH START
+    } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_RETURN &&
+               SEARCH_BUF_OFFSET > 1) {
+
+      // NOTE: no search yet
+      if (search_results == NULL) {
+        handle_search_results(text_textures, textures_count, state);
+
+        // NOTE: find first search result >= to current vertical scroll
+        {
+          SearchResult *cur = search_results;
+          for (; cur != NULL && cur->next != search_results &&
+                 cur->start->y < abs(state->vertical_scroll);
+               cur = cur->next) {
+            ;
+          }
+          search_results = cur;
+        }
+
+        // NOTE: new search
+      } else if (search_results != NULL &&
+                 strcmp(SEARCH_BUF + 1, search_results->val) != 0) {
+        search_results = free_search_results();
+        handle_search_results(text_textures, textures_count, state);
+
+        // NOTE: find first search result >= to current vertical scroll
+        {
+          SearchResult *cur = search_results;
+          for (; cur != NULL && cur->next != search_results &&
+                 cur->start->y < abs(state->vertical_scroll);
+               cur = cur->next) {
+            ;
+          }
+          search_results = cur;
+        }
+
+        // NOTE: search didn't change, go to next/prev occurence
+      } else if (search_results != NULL &&
+                 strcmp(SEARCH_BUF + 1, search_results->val) == 0) {
+        if (sdl_event.key.keysym.mod & KMOD_SHIFT) {
+          search_results = search_results->prev;
+        } else {
+          search_results = search_results->next;
+        }
+      }
+
+      if (search_results != NULL) {
+        // NOTE: jump scroll, if search result not in view
+        if (search_results->start->y < abs(state->vertical_scroll) ||
+            abs(state->vertical_scroll) + state->window_height <
+                search_results->start->y) {
+          state->vertical_scroll = -search_results->start->y;
+        }
+
+        // NOTE: set highlight
+        state->highlight_stationary_coord = search_results->start;
+        state->highlight_moving_coord = search_results->end;
+        state->highlight_stationary_texture_idx =
+            search_results->start_texture_idx;
+        state->highlight_moving_texture_idx = search_results->end_texture_idx;
+      }
+
+      add_to_search_history();
+
+      // SEARCH END
+
+      //
     }
 
     SDL_RenderClear(renderer);
@@ -1034,10 +1565,14 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
   state->font_scale_factor = 1.0f;
   state->font_size_unchanged_since = SDL_GetTicks64();
   update_clearing_texture(renderer, state);
+  state->font = font;
+
+  SEARCH_BUF[SEARCH_BUF_OFFSET] = '/';
+  SEARCH_BUF_OFFSET += 1;
 
   int textures_count = 0;
   Texture **text_textures = tokens_to_textures(
-      renderer, font, FONT_SIZE, tokens, tokens_count, &textures_count, state);
+      renderer, FONT_SIZE, tokens, tokens_count, &textures_count, state);
 
   SDL_RenderClear(renderer);
 
@@ -1064,9 +1599,8 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     start = SDL_GetTicks64();
 
     SDL_Event sdl_event;
-    handled_event_count =
-        handle_sdl_events(window, sdl_event, renderer, font, text_textures,
-                          textures_count, state);
+    handled_event_count = handle_sdl_events(
+        window, sdl_event, renderer, text_textures, textures_count, state);
     if (!state->keep_window_open) {
       break;
     }
@@ -1080,7 +1614,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
                              &tokens_count);
 
       text_textures =
-          update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
+          update_textures(text_textures, renderer, FONT_SIZE, tokens,
                           tokens_count, &textures_count, state);
 
       SDL_RenderClear(renderer);
@@ -1096,7 +1630,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     } else if (state->color_scheme_modified) {
       state->color_scheme_modified = false;
       text_textures =
-          update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
+          update_textures(text_textures, renderer, FONT_SIZE, tokens,
                           tokens_count, &textures_count, state);
 
       SDL_RenderClear(renderer);
@@ -1115,7 +1649,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
         state->font_scale_factor = 1.0f;
         // MAYBE: TODO: make update_textures parallel safe
         text_textures =
-            update_textures(text_textures, renderer, font, FONT_SIZE, tokens,
+            update_textures(text_textures, renderer, FONT_SIZE, tokens,
                             tokens_count, &textures_count, state);
 
         SDL_RenderClear(renderer);
@@ -1142,6 +1676,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     }
   }
 
+  TTF_CloseFont(state->font);
   SDL_DestroyWindow(window);
   SDL_DestroyRenderer(renderer);
   SDL_Quit();
@@ -1162,6 +1697,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
     }
     free(state);
   }
-
+  search_results = free_search_results();
+  search_history = free_search_history();
   return err;
 }
