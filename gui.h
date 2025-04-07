@@ -41,7 +41,8 @@ int FONT_SIZE = DEFAULT_FONT_SIZE;      // MAYBE: move to state
 int HORIZONTAL_PADDING = (HORIZONTAL_PADDING_BASE);
 int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 
-// TODO: add SEARCH_BUF_SIZE overflow checks
+// TODO: add SEARCH_BUF_SIZE overflow checks NOTE: might already be done
+// TODO: handle case when search text doesn't fit in the window
 #define SEARCH_BUF_SIZE (4096)
 char SEARCH_BUF[SEARCH_BUF_SIZE] = {0};
 int SEARCH_BUF_OFFSET = 0;
@@ -1229,12 +1230,9 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
                sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_f) {
-      // // NOTE: ctrl+shift+f forgets previous search
-      // if (sdl_event.key.keysym.mod & KMOD_SHIFT) {
       search_results = free_search_results();
       memset(SEARCH_BUF + 1, 0, SEARCH_BUF_OFFSET - 1);
       SEARCH_BUF_OFFSET = 1;
-      // }
       state->search_mode = true;
       // ENABLE SEARCH END
 
