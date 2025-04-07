@@ -580,57 +580,65 @@ void handle_searchbox(SDL_Renderer *renderer, State *state) {
 
 void handle_search_results(Texture **textures, int textures_count,
                            State *state) {
+
   char *sliding_window = calloc(SEARCH_BUF_OFFSET, sizeof(char));
-
-  int textures_offset = 0;
   int sliding_window_filled = 0;
-  int char_offset = 0;
 
-  while (textures_offset < textures_count) {
+  int textures_offset_start = 0;
+  int char_offset_start = 0;
 
-    int texture_char_size =
-        textures[textures_offset]->w / textures[textures_offset]->token->vlen;
+  int textures_offset_end = 0;
+  int char_offset_end = 0;
 
-    Coord start_coord = {
-        .x = HORIZONTAL_PADDING + textures[textures_offset]->x +
-             texture_char_size * char_offset,
-        .y = VERTICAL_PADDING + textures[textures_offset]->y,
-    };
-    int start_texture_idx = textures_offset;
-    Coord end_coord = {0};
+  Coord start_coord = {0};
+  Coord end_coord = {0};
+
+  while (textures_offset_start < textures_count) {
+
+    int texture_char_size = textures[textures_offset_start]->w /
+                            textures[textures_offset_start]->token->vlen;
+
+    start_coord.x = HORIZONTAL_PADDING + textures[textures_offset_start]->x +
+                    texture_char_size * char_offset_start;
+    start_coord.y = VERTICAL_PADDING + textures[textures_offset_start]->y;
 
     // NOTE: fill sliding window
     while (sliding_window_filled <
            SEARCH_BUF_OFFSET - 1) { // -1 to account for '/'
-      if (char_offset >= textures[textures_offset]->token->vlen) {
-        textures_offset += 1;
-        char_offset = 0;
-      }
-      if (textures_offset >= textures_count) {
-        break;
+      if (char_offset_end >= textures[textures_offset_end]->token->vlen) {
+        textures_offset_end += 1;
+        if (textures_offset_end >= textures_count) {
+          free(sliding_window);
+          return;
+        }
+        char_offset_end = 0;
       }
       memcpy(sliding_window + sliding_window_filled,
-             (textures[textures_offset]->token->v + char_offset), 1);
+             (textures[textures_offset_end]->token->v + char_offset_end), 1);
       sliding_window_filled += 1;
-      char_offset += 1;
-    }
-
-    if (textures_offset < textures_count) {
-      end_coord.x = HORIZONTAL_PADDING + textures[textures_offset]->x +
-                    texture_char_size * char_offset;
-      end_coord.y = VERTICAL_PADDING + textures[textures_offset]->y;
+      char_offset_end += 1;
     }
 
     if (strcmp(SEARCH_BUF + 1, sliding_window) == 0) {
-      start_coord.x -=
-          (sliding_window_filled - 1) *
-          texture_char_size; // FIXME: HACK: to fix the highlighting
-      add_search_result(&start_coord, &end_coord, start_texture_idx,
-                        textures_offset, state);
+      end_coord.x = HORIZONTAL_PADDING + textures[textures_offset_end]->x +
+                    texture_char_size * char_offset_end;
+      end_coord.y = VERTICAL_PADDING + textures[textures_offset_end]->y;
+      add_search_result(&start_coord, &end_coord, textures_offset_start,
+                        textures_offset_end, state);
     }
 
     sliding_window_filled -= 1;
     memmove(sliding_window, sliding_window + 1, SEARCH_BUF_OFFSET - 2);
+
+    char_offset_start += 1;
+    if (char_offset_start >= textures[textures_offset_start]->token->vlen) {
+      textures_offset_start += 1;
+      if (textures_offset_start >= textures_count) {
+        free(sliding_window);
+        return;
+      }
+      char_offset_start = 0;
+    }
   }
 
   free(sliding_window);
