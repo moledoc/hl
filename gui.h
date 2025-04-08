@@ -43,9 +43,14 @@ int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 
 // TODO: add SEARCH_BUF_SIZE overflow checks NOTE: might already be done
 // TODO: handle case when search text doesn't fit in the window
-#define SEARCH_BUF_SIZE (4096)
+#define SEARCH_BUF_SIZE (4096 + 1)
 char SEARCH_BUF[SEARCH_BUF_SIZE] = {0};
 int SEARCH_BUF_OFFSET = 0;
+
+// TODO: handle case when goto_line text doesn't fit in the window
+#define GOTO_LINE_BUF_SIZE (100 + 1)
+char GOTO_LINE_BUF[GOTO_LINE_BUF_SIZE] = {0};
+int GOTO_LINE_BUF_OFFSET = 0;
 
 typedef struct {
   struct SDL_Texture *texture;
@@ -100,6 +105,8 @@ typedef struct {
   int rows_count;
   //
   bool search_mode;
+  //
+  bool goto_line_mode;
 } State;
 
 typedef struct SearchResult {
@@ -522,61 +529,63 @@ void handle_scrollbars(SDL_Renderer *renderer, State *state) {
   SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
 }
 
-void handle_searchbox(SDL_Renderer *renderer, State *state) {
+void handle_actionbox(SDL_Renderer *renderer, State *state, bool handle,
+                      char *buf) {
 
-  if (!state->search_mode) {
+  if (!handle) {
     return;
   }
 
-  SDL_Surface *search_surface = TTF_RenderUTF8_Solid(
-      state->font, SEARCH_BUF, color_scheme->search_text_fg);
-  if (search_surface == NULL) {
-    fprintf(stderr, "[WARNING]: failed to create search text surface: %s\n",
+  SDL_Surface *actionbox_surface =
+      TTF_RenderUTF8_Solid(state->font, buf, color_scheme->actionbox_text_fg);
+  if (actionbox_surface == NULL) {
+    fprintf(stderr, "[WARNING]: failed to create actionbox text surface: %s\n",
             TTF_GetError());
     return;
   }
 
-  SDL_Texture *search_texture =
-      SDL_CreateTextureFromSurface(renderer, search_surface);
+  SDL_Texture *actionbox_texture =
+      SDL_CreateTextureFromSurface(renderer, actionbox_surface);
 
-  if (search_texture == NULL) {
-    fprintf(stderr, "failed to create search text texture: %s\n",
+  if (actionbox_texture == NULL) {
+    fprintf(stderr, "failed to create actionbox text texture: %s\n",
             SDL_GetError());
-    SDL_FreeSurface(search_surface);
+    SDL_FreeSurface(actionbox_surface);
     return;
   }
 
   int start_x = 0;
-  int start_y = state->window_height - search_surface->h;
+  int start_y = state->window_height - actionbox_surface->h;
 
   SDL_Color prev = {0};
   SDL_GetRenderDrawColor(renderer, (Uint8 *)&prev.r, (Uint8 *)&prev.g,
                          (Uint8 *)&prev.b, (Uint8 *)&prev.a);
-  // NOTE: search bar
-  SDL_SetRenderDrawColor(renderer, color_scheme->search_box.r,
-                         color_scheme->search_box.g, color_scheme->search_box.b,
-                         color_scheme->search_box.a);
+  // NOTE: actionbox bar
+  SDL_SetRenderDrawColor(
+      renderer, color_scheme->actionbox_box.r, color_scheme->actionbox_box.g,
+      color_scheme->actionbox_box.b, color_scheme->actionbox_box.a);
   SDL_Rect clearing_rect = {start_x, start_y, state->window_width,
-                            search_surface->h};
+                            actionbox_surface->h};
   SDL_RenderFillRect(renderer, &clearing_rect);
 
-  // NOTE: search text bg
-  SDL_SetRenderDrawColor(
-      renderer, color_scheme->search_text_bg.r, color_scheme->search_text_bg.g,
-      color_scheme->search_text_bg.b, color_scheme->search_text_bg.a);
-  SDL_Rect rect_text_bg = {start_x, start_y, search_surface->w,
-                           search_surface->h};
+  // NOTE: actionbox text bg
+  SDL_SetRenderDrawColor(renderer, color_scheme->actionbox_text_bg.r,
+                         color_scheme->actionbox_text_bg.g,
+                         color_scheme->actionbox_text_bg.b,
+                         color_scheme->actionbox_text_bg.a);
+  SDL_Rect rect_text_bg = {start_x, start_y, actionbox_surface->w,
+                           actionbox_surface->h};
   SDL_RenderFillRect(renderer, &rect_text_bg);
 
   SDL_SetRenderDrawColor(renderer, prev.r, prev.g, prev.b, prev.a);
 
-  // NOTE: search text fg
-  SDL_Rect rect_text_fg = {start_x, start_y, search_surface->w,
-                           search_surface->h};
-  SDL_RenderCopy(renderer, search_texture, NULL, &rect_text_fg);
+  // NOTE: actionbox text fg
+  SDL_Rect rect_text_fg = {start_x, start_y, actionbox_surface->w,
+                           actionbox_surface->h};
+  SDL_RenderCopy(renderer, actionbox_texture, NULL, &rect_text_fg);
 
-  SDL_FreeSurface(search_surface);
-  SDL_DestroyTexture(search_texture);
+  SDL_FreeSurface(actionbox_surface);
+  SDL_DestroyTexture(actionbox_texture);
 }
 
 void handle_search_results(Texture **textures, int textures_count,
@@ -990,7 +999,8 @@ int cpy_to_renderer(SDL_Renderer *renderer, Texture **textures,
   }
 
   // handle search
-  handle_searchbox(renderer, state);
+  handle_actionbox(renderer, state, state->search_mode, SEARCH_BUF);
+  handle_actionbox(renderer, state, state->goto_line_mode, GOTO_LINE_BUF);
 
   return EXIT_SUCCESS;
 }
@@ -1307,7 +1317,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       }
       // PASTE TO SEARCH START
 
-      // SEARCH TYPE START
+      // SEARCH TYPING START
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym != SDLK_RETURN &&
@@ -1424,7 +1434,7 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         }
         SEARCH_BUF_OFFSET += 1;
       }
-      // SEARCH TYPE END
+      // SEARCH TYPING END
 
       // SEARCH START
     } else if (state->search_mode && sdl_event.type == SDL_KEYDOWN &&
@@ -1533,6 +1543,56 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
       state->vertical_scroll = -state->max_vertical_offset;
       // JUMP TO END END
 
+      // ENABLE GOTO_LINE START
+    } else if (!state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_g &&
+               (sdl_event.key.keysym.mod & KMOD_CTRL)) {
+      memset(GOTO_LINE_BUF + 1, 0, GOTO_LINE_BUF_OFFSET - 1);
+      GOTO_LINE_BUF_OFFSET = 1;
+      state->goto_line_mode = true;
+      // ENABLE GOTO_LINE END
+
+      // DISABLE GOTO_LINE START
+    } else if (state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_ESCAPE) {
+      memset(GOTO_LINE_BUF + 1, 0, GOTO_LINE_BUF_OFFSET - 1);
+      GOTO_LINE_BUF_OFFSET = 1;
+      state->goto_line_mode = false;
+      // DISABLE GOTO_LINE END
+
+      // GOTO_LINE TYPING START
+    } else if (state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym != SDLK_RETURN) {
+      if (sdl_event.key.keysym.sym == SDLK_BACKSPACE) {
+        if (GOTO_LINE_BUF_OFFSET > 1) {
+          GOTO_LINE_BUF_OFFSET -= 1;
+        }
+        GOTO_LINE_BUF[GOTO_LINE_BUF_OFFSET] = '\0';
+      }
+      if ('0' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= '9' &&
+          GOTO_LINE_BUF_OFFSET < GOTO_LINE_BUF_SIZE - 1) {
+        GOTO_LINE_BUF[GOTO_LINE_BUF_OFFSET] = sdl_event.key.keysym.sym;
+        GOTO_LINE_BUF_OFFSET += 1;
+      }
+      // GOTO_LINE TYPING END
+
+      // GOTO_LINE START
+    } else if (state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
+               sdl_event.key.state == SDL_PRESSED &&
+               sdl_event.key.keysym.sym == SDLK_RETURN &&
+               GOTO_LINE_BUF_OFFSET > 1) {
+      int idx = atoi(GOTO_LINE_BUF + 1) - 1;
+      memset(GOTO_LINE_BUF + 1, 0, GOTO_LINE_BUF_OFFSET - 1);
+      GOTO_LINE_BUF_OFFSET = 1;
+      if (0 <= idx && idx < state->rows_count) {
+        state->vertical_scroll = -state->row_nr_textures[idx]->y;
+      }
+      state->goto_line_mode = false;
+      // GOTO_LINE END
+
       //
     }
 
@@ -1608,6 +1668,9 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
   SEARCH_BUF[SEARCH_BUF_OFFSET] = '/';
   SEARCH_BUF_OFFSET += 1;
+
+  GOTO_LINE_BUF[GOTO_LINE_BUF_OFFSET] = ':';
+  GOTO_LINE_BUF_OFFSET += 1;
 
   int textures_count = 0;
   Texture **text_textures = tokens_to_textures(
