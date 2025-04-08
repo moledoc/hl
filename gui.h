@@ -10,8 +10,8 @@
 #include "tokens.h"
 #include "utils.h"
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 960
+#define SCREEN_HEIGHT 540
 
 #define HORIZONTAL_SCROLL_MULT (-200)
 #define VERTICAL_SCROLL_MULT 50
