@@ -1558,6 +1558,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     } else if (state->goto_line_mode && sdl_event.type == SDL_KEYDOWN &&
                sdl_event.key.state == SDL_PRESSED &&
                sdl_event.key.keysym.sym == SDLK_ESCAPE) {
+      memset(GOTO_LINE_BUF + 1, 0, GOTO_LINE_BUF_OFFSET - 1);
+      GOTO_LINE_BUF_OFFSET = 1;
       state->goto_line_mode = false;
       // DISABLE GOTO_LINE END
 
