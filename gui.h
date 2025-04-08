@@ -47,7 +47,6 @@ int ROW_NUMBER_WIDTH = 0; // NOTE: will be updated once it's calculated
 char SEARCH_BUF[SEARCH_BUF_SIZE] = {0};
 int SEARCH_BUF_OFFSET = 0;
 
-// TODO: add GOTO_LINE_SIZE overflow checks NOTE: might already be done
 // TODO: handle case when goto_line text doesn't fit in the window
 #define GOTO_LINE_BUF_SIZE (100 + 1)
 char GOTO_LINE_BUF[GOTO_LINE_BUF_SIZE] = {0};
