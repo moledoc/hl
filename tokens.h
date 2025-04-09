@@ -74,8 +74,8 @@ void free_tokenizer_config(TokenizerConfig *tokenizer_config) {
 }
 
 bool is_word(char c) {
-  return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9' ||
-         c == '_';
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
+         ('0' <= c && c <= '9') || c == '_';
 }
 
 bool is_int(char c) { return '0' <= c && c <= '9'; }
@@ -369,10 +369,6 @@ Token **tokenize(char *contents, int contents_length,
 
   int prev_offset = 0;
   int offset = 0;
-
-  bool is_line_comment = false;
-  bool is_block_comment = false;
-  char is_string = 0;
 
   while (offset < contents_length) {
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDL2/SDL.h>
+#include "SDL.h"
 
 #define WHITE ((SDL_Color){255, 255, 255, 255})
 #define BLACK ((SDL_Color){0, 0, 0, 255})
