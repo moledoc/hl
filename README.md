@@ -73,13 +73,14 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 	- [x] vendor SDL2
 		- why: to practice vendoring
 		- installed libtool-bin and some `lib.*-dev` packages
+		- steps to build SDL2 and SDL2_ttf for vendoring:
 		```sh
 		git clone -b SDL2 https://github.com/libsdl-org/SDL.git
 		git clone -b SDL2 https://github.com/libsdl-org/SDL_ttf.git
 		mkdir SDL2
 		cd SDL; ./configure --prefix=$(pwd)/../SDL2; make -j4; make -j4 install; cd ..
 		cd SDL_ttf; ./configure --prefix=$(pwd)/../SDL2 --disable-freetype-builtin --disable-harfbuzz-builtin; make -j4; make -j4 install; cd ..
-		PKG_CONFIG_PATH=./SDL2/lib/pkgconfig pkg-config --cflags --libs sdl2 SDL2_ttf
+		PKG_CONFIG_PATH=./SDL2/lib/pkgconfig pkg-config --cflags --libs sdl2 SDL2_ttf # prints include and lib paths, but this has been added to Makefile as well
 		```
 	- [ ] move tokens and textures to state
 	- [ ] use linked lists for holding tokens/textures instead of array
