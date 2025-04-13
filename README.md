@@ -9,6 +9,11 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 * Enable some highlighting in my `acme` workflow, when I need it (screensharing, visual parsing, etc).
 * Seemed like an interesting project for me to expand my knowledge and skills.
 
+## Dependencies:
+
+* libsdl2-ttf-dev
+* libsdl2-dev
+
 ## TODO:
 
 - [x] tokenizing file
@@ -70,17 +75,21 @@ Text displaying tool (to enhance acme workflow) - might become something else in
 		- MAYBE: `jump to <path>:<line>:<col>` support
 	- [x] text search
 	- [ ] ~~display cursor~~
-	- [x] vendor SDL2
-		- why: to practice vendoring
+	- [x] ~~vendor SDL2~~ how to vendor:
 		- installed libtool-bin and some `lib.*-dev` packages
 		- steps to build SDL2 and SDL2_ttf for vendoring:
 		```sh
 		git clone -b SDL2 https://github.com/libsdl-org/SDL.git
 		git clone -b SDL2 https://github.com/libsdl-org/SDL_ttf.git
+		mkdir vendor
+		cd vendor
 		mkdir SDL2
 		cd SDL; ./configure --prefix=$(pwd)/../SDL2; make -j4; make -j4 install; cd ..
 		cd SDL_ttf; ./configure --prefix=$(pwd)/../SDL2 --disable-freetype-builtin --disable-harfbuzz-builtin; make -j4; make -j4 install; cd ..
 		PKG_CONFIG_PATH=./SDL2/lib/pkgconfig pkg-config --cflags --libs sdl2 SDL2_ttf # prints include and lib paths, but this has been added to Makefile as well
+
+		# compile cmd
+		clang -Wall -o ./bin/hl ./main.c -lm `PKG_CONFIG_PATH="./vendor/SDL2/lib/pkgconfig" pkg-config --cflags --libs sdl2 SDL2_ttf`
 		```
 	- [ ] move tokens and textures to state
 	- [ ] use linked lists for holding tokens/textures instead of array

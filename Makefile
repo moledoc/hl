@@ -3,6 +3,9 @@ dirs:
 	mkdir -p bin tests/out
 
 build: dirs
+	clang -Wall -o ./bin/hl ./main.c -I/usr/include/SDL2 -D_REENTRANT -lm -lSDL2 -lSDL2_ttf
+
+vendored-build: dirs
 	clang -Wall -o ./bin/hl ./main.c -lm `PKG_CONFIG_PATH="./vendor/SDL2/lib/pkgconfig" pkg-config --cflags --libs sdl2 SDL2_ttf`
 
 record_all: build
