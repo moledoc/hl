@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -338,22 +339,22 @@ int texture_idx_from_mouse_pos(Texture **textures, int textures_count,
         // mouse is out of window to the top
         mouse_y < 0 ||
         // check based on cursor being on the same line
-        texture_start_height <= mouse_y &&
-            mouse_y < texture_start_height + textures[i]->h &&
-            (
-                // direct hit on the token
-                texture_start_width < mouse_x &&
-                    mouse_x < texture_start_width + textures[i]->w
-                //
-                ||
-                // mouse is out of window to the left
-                mouse_x < HORIZONTAL_PADDING
-                //
-                ||
-                // mouse is out of window to the right
-                mouse_x > state->window_width
-                //
-                )) {
+        (texture_start_height <= mouse_y &&
+         mouse_y < texture_start_height + textures[i]->h &&
+         (
+             // direct hit on the token
+             (texture_start_width < mouse_x &&
+              mouse_x < texture_start_width + textures[i]->w)
+             //
+             ||
+             // mouse is out of window to the left
+             mouse_x < HORIZONTAL_PADDING
+             //
+             ||
+             // mouse is out of window to the right
+             mouse_x > state->window_width
+             //
+             ))) {
       return i;
     }
   }
@@ -374,10 +375,10 @@ void handle_highlight(SDL_Renderer *renderer, Texture **textures,
       // stationary token index was neg
       state->highlight_stationary_texture_idx < 0 ||
       // mouse click, no moving
-      state->highlight_stationary_coord->x ==
-              state->highlight_moving_coord->x &&
-          state->highlight_stationary_coord->y ==
-              state->highlight_moving_coord->y) {
+      (state->highlight_stationary_coord->x ==
+           state->highlight_moving_coord->x &&
+       state->highlight_stationary_coord->y ==
+           state->highlight_moving_coord->y)) {
     return;
   }
 
@@ -664,10 +665,10 @@ void handle_copy_to_clipboard(Texture **textures, int textures_count,
       // stationary token index was neg
       state->highlight_stationary_texture_idx < 0 ||
       // mouse click, no moving
-      state->highlight_stationary_coord->x ==
-              state->highlight_moving_coord->x &&
-          state->highlight_stationary_coord->y ==
-              state->highlight_moving_coord->y) {
+      (state->highlight_stationary_coord->x ==
+           state->highlight_moving_coord->x &&
+       state->highlight_stationary_coord->y ==
+           state->highlight_moving_coord->y)) {
     return;
   }
 
@@ -697,8 +698,8 @@ void handle_copy_to_clipboard(Texture **textures, int textures_count,
 
     int texture_start_width =
         HORIZONTAL_PADDING + textures[i]->x + state->horizontal_scroll;
-    int texture_start_height =
-        VERTICAL_PADDING + textures[i]->y + state->vertical_scroll;
+    // int texture_start_height = VERTICAL_PADDING + textures[i]->y +
+    // state->vertical_scroll;
 
     int texture_char_size = textures[i]->w / textures[i]->token->vlen;
     int highlight_start_offset = 0;
@@ -1018,9 +1019,9 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
     SDL_RenderClear(renderer);
 
     // Q(UIT) START
-    if (sdl_event.type == SDL_QUIT || sdl_event.type == SDL_KEYDOWN &&
-                                          sdl_event.key.state == SDL_PRESSED &&
-                                          sdl_event.key.keysym.sym == SDLK_q) {
+    if (sdl_event.type == SDL_QUIT ||
+        (sdl_event.type == SDL_KEYDOWN && sdl_event.key.state == SDL_PRESSED &&
+         sdl_event.key.keysym.sym == SDLK_q)) {
       state->keep_window_open = false;
       return event_count;
       // Q(UIT) END
@@ -1338,7 +1339,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         SEARCH_BUF_OFFSET += 1;
       }
 
-      if (('0' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= '9' ||
+      if ((('0' <= sdl_event.key.keysym.sym &&
+            sdl_event.key.keysym.sym <= '9') ||
            sdl_event.key.keysym.sym == '`' || sdl_event.key.keysym.sym == '-' ||
            sdl_event.key.keysym.sym == '=' || sdl_event.key.keysym.sym == '[' ||
            sdl_event.key.keysym.sym == ']' || sdl_event.key.keysym.sym == ';' ||
@@ -1353,7 +1355,8 @@ int handle_sdl_events(SDL_Window *window, SDL_Event sdl_event,
         SEARCH_BUF_OFFSET += 1;
       }
 
-      if (('0' <= sdl_event.key.keysym.sym && sdl_event.key.keysym.sym <= '9' ||
+      if ((('0' <= sdl_event.key.keysym.sym &&
+            sdl_event.key.keysym.sym <= '9') ||
            sdl_event.key.keysym.sym == '`' || sdl_event.key.keysym.sym == '-' ||
            sdl_event.key.keysym.sym == '=' || sdl_event.key.keysym.sym == '[' ||
            sdl_event.key.keysym.sym == ']' || sdl_event.key.keysym.sym == ';' ||
@@ -1700,7 +1703,7 @@ int gui_loop(char *filename, TokenizerConfig *tokenizer_config) {
 
     start = SDL_GetTicks64();
 
-    SDL_Event sdl_event;
+    SDL_Event sdl_event = {0};
     handled_event_count = handle_sdl_events(
         window, sdl_event, renderer, text_textures, textures_count, state);
     if (!state->keep_window_open) {
