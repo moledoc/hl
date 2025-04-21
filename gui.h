@@ -17,7 +17,12 @@
 #define HORIZONTAL_SCROLL_MULT (-200)
 #define VERTICAL_SCROLL_MULT 50
 
+#ifdef OSX
+#define GUI_FONT "/System/Library/Fonts/Monaco.ttf"
+#else
 #define GUI_FONT "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
+#endif
+
 #define DEFAULT_FONT_SIZE 20
 #define FONT_INCREMENT 1
 #define FONT_LOWER_BOUND 12
